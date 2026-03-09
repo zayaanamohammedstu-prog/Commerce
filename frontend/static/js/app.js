@@ -17,6 +17,43 @@ const C = {
 };
 const PALETTE = Object.values(C);
 
+/* ── Theme helpers ───────────────────────────────────────── */
+function isDark() {
+  return document.documentElement.getAttribute('data-theme') !== 'light';
+}
+function chartGridColor() {
+  return isDark() ? 'rgba(255,255,255,.04)' : 'rgba(0,0,0,.06)';
+}
+function chartGridColorR() {
+  return isDark() ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.07)';
+}
+function chartTextColor() {
+  return isDark() ? '#4e5b70' : '#64748b';
+}
+function applyChartDefaults() {
+  Chart.defaults.color = chartTextColor();
+  Chart.defaults.borderColor = isDark() ? 'rgba(255,255,255,.055)' : 'rgba(0,0,0,.08)';
+}
+
+/* ── Theme Toggle ────────────────────────────────────────── */
+const html        = document.documentElement;
+const themeToggle = document.getElementById('themeToggle');
+
+function applyTheme(theme) {
+  html.setAttribute('data-theme', theme);
+  localStorage.setItem('meridian-theme', theme);
+  themeToggle.title = theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
+  applyChartDefaults();
+}
+
+const savedTheme = localStorage.getItem('meridian-theme') || 'dark';
+applyTheme(savedTheme);
+
+themeToggle.addEventListener('click', () => {
+  applyTheme(isDark() ? 'light' : 'dark');
+  loadAll();
+});
+
 /* ── Utilities ───────────────────────────────────────────── */
 function fmtCurrency(v) {
   if (v == null || isNaN(v)) return '—';
@@ -165,9 +202,9 @@ async function loadSalesChart() {
         interaction: { mode: 'index', intersect: false },
         scales: {
           x:  { grid: { display: false } },
-          y:  { position: 'left',  title: { display: true, text: 'Revenue ($)', color: '#4e5b70' },
-                grid: { color: 'rgba(255,255,255,.04)' } },
-          y1: { position: 'right', title: { display: true, text: 'Units', color: '#4e5b70' },
+          y:  { position: 'left',  title: { display: true, text: 'Revenue ($)', color: chartTextColor() },
+                grid: { color: chartGridColor() } },
+          y1: { position: 'right', title: { display: true, text: 'Units', color: chartTextColor() },
                 grid: { drawOnChartArea: false } },
         },
         plugins: { legend: { position: 'top', labels: { boxWidth: 12, padding: 16 } } },
@@ -207,8 +244,8 @@ async function loadTopProducts() {
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { color: 'rgba(255,255,255,.04)' },
-               title: { display: true, text: 'Revenue ($)', color: '#4e5b70' } },
+          x: { grid: { color: chartGridColor() },
+               title: { display: true, text: 'Revenue ($)', color: chartTextColor() } },
           y: { grid: { display: false } },
         },
       },
@@ -268,8 +305,8 @@ async function loadRegionCharts() {
         plugins: { legend: { display: false } },
         scales: {
           x: { grid: { display: false } },
-          y: { grid: { color: 'rgba(255,255,255,.04)' },
-               title: { display: true, text: 'Revenue ($)', color: '#4e5b70' } },
+          y: { grid: { color: chartGridColor() },
+               title: { display: true, text: 'Revenue ($)', color: chartTextColor() } },
         },
       },
     });
@@ -290,7 +327,7 @@ async function loadRegionCharts() {
         responsive: true,
         plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 12 } } },
         scales: {
-          r: { grid: { color: 'rgba(255,255,255,.06)' }, ticks: { display: false } },
+          r: { grid: { color: chartGridColorR() }, ticks: { display: false } },
         },
       },
     });
@@ -363,8 +400,8 @@ async function loadForecast() {
         responsive: true,
         scales: {
           x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } },
-          y: { grid: { color: 'rgba(255,255,255,.04)' },
-               title: { display: true, text: 'Revenue ($)', color: '#4e5b70' } },
+          y: { grid: { color: chartGridColor() },
+               title: { display: true, text: 'Revenue ($)', color: chartTextColor() } },
         },
         plugins: {
           legend: { display: false },
