@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commerce Analytics Dashboard</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <!-- Chart.js (served locally) -->
+  <script src="/static/js/vendor/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <h1 class="logo">📊 Commerce Analytics</h1>
+      <nav class="nav">
+        <a href="#kpis">KPIs</a>
+        <a href="#sales">Sales</a>
+        <a href="#products">Products</a>
+        <a href="#regions">Regions</a>
+        <a href="#forecast">Forecast</a>
+      </nav>
+      <button id="runEtlBtn" class="btn-primary">⚡ Run ETL</button>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ETL status banner -->
+    <div id="etlBanner" class="banner hidden"></div>
+
+    <!-- ── KPI Cards ───────────────────────────────────────────── -->
+    <section id="kpis" class="section">
+      <h2 class="section-title">Key Performance Indicators</h2>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-icon">💰</span>
+          <div class="kpi-value" id="kpiRevenue">—</div>
+          <div class="kpi-label">Total Revenue</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-icon">🛒</span>
+          <div class="kpi-value" id="kpiOrders">—</div>
+          <div class="kpi-label">Total Orders</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-icon">📦</span>
+          <div class="kpi-value" id="kpiUnits">—</div>
+          <div class="kpi-label">Units Sold</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-icon">👥</span>
+          <div class="kpi-value" id="kpiCustomers">—</div>
+          <div class="kpi-label">Unique Customers</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-icon">🏷️</span>
+          <div class="kpi-value" id="kpiAvgOrder">—</div>
+          <div class="kpi-label">Avg Order Value</div>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-icon">🎁</span>
+          <div class="kpi-value" id="kpiProducts">—</div>
+          <div class="kpi-label">Products Sold</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Sales Trend ────────────────────────────────────────── -->
+    <section id="sales" class="section">
+      <div class="section-header">
+        <h2 class="section-title">Sales Over Time</h2>
+        <div class="controls">
+          <select id="granularity" class="select">
+            <option value="monthly" selected>Monthly</option>
+            <option value="weekly">Weekly</option>
+            <option value="daily">Daily</option>
+          </select>
+        </div>
+      </div>
+      <div class="chart-card">
+        <canvas id="salesChart"></canvas>
+      </div>
+    </section>
+
+    <!-- ── Top Products + Category ───────────────────────────── -->
+    <section id="products" class="section">
+      <h2 class="section-title">Products</h2>
+      <div class="two-col">
+        <div class="chart-card">
+          <h3 class="chart-title">Top 10 Products by Revenue</h3>
+          <canvas id="topProductsChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3 class="chart-title">Revenue by Category</h3>
+          <canvas id="categoryChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Sales by Region ────────────────────────────────────── -->
+    <section id="regions" class="section">
+      <h2 class="section-title">Sales by Region</h2>
+      <div class="two-col">
+        <div class="chart-card">
+          <h3 class="chart-title">Revenue by Region</h3>
+          <canvas id="regionChart"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3 class="chart-title">Orders by Region</h3>
+          <canvas id="regionOrdersChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Sales Forecast ─────────────────────────────────────── -->
+    <section id="forecast" class="section">
+      <div class="section-header">
+        <h2 class="section-title">Sales Forecast</h2>
+        <div class="controls">
+          <select id="forecastHorizon" class="select">
+            <option value="14">14 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="60">60 days</option>
+            <option value="90">90 days</option>
+          </select>
+        </div>
+      </div>
+      <div id="forecastMeta" class="forecast-meta"></div>
+      <div class="chart-card">
+        <canvas id="forecastChart"></canvas>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>Commerce Analytics Dashboard — Powered by Flask &amp; Chart.js</p>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

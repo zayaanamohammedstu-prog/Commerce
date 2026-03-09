@@ -1,0 +1,16 @@
+product_id,name,category,unit_price
+P001,Laptop Pro 15,Electronics,1299.99
+P002,Wireless Mouse,Electronics,29.99
+P003,USB-C Hub,Electronics,49.99
+P004,Mechanical Keyboard,Electronics,89.99
+P005,Monitor 27",Electronics,349.99
+P006,Office Chair,Furniture,249.99
+P007,Standing Desk,Furniture,499.99
+P008,Desk Lamp,Furniture,39.99
+P009,Notebook Set,Stationery,12.99
+P010,Pen Pack,Stationery,8.99
+P011,Webcam HD,Electronics,79.99
+P012,Headphones Pro,Electronics,199.99
+P013,Bookshelf,Furniture,149.99
+P014,Filing Cabinet,Furniture,179.99
+P015,Sticky Notes,Stationery,5.99
