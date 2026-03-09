@@ -3,140 +3,272 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Commerce Analytics Dashboard</title>
+  <title>Meridian · Commerce Analytics</title>
   <link rel="stylesheet" href="/static/css/style.css" />
-  <!-- Chart.js (served locally) -->
   <script src="/static/js/vendor/chart.umd.min.js"></script>
 </head>
 <body>
-  <header class="header">
-    <div class="header-inner">
-      <h1 class="logo">📊 Commerce Analytics</h1>
-      <nav class="nav">
-        <a href="#kpis">KPIs</a>
-        <a href="#sales">Sales</a>
-        <a href="#products">Products</a>
-        <a href="#regions">Regions</a>
-        <a href="#forecast">Forecast</a>
+  <div class="app-shell">
+
+    <!-- ── Sidebar ──────────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-hex">M</div>
+        <div class="brand-info">
+          <span class="brand-name">MERIDIAN</span>
+          <span class="brand-sub">Commerce Analytics</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav" id="sidebarNav">
+        <a class="nav-link active" href="#overview" data-label="Overview">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+          <span>Overview</span>
+        </a>
+        <a class="nav-link" href="#sales" data-label="Sales Trend">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          <span>Sales</span>
+        </a>
+        <a class="nav-link" href="#products" data-label="Products">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+          </svg>
+          <span>Products</span>
+        </a>
+        <a class="nav-link" href="#regions" data-label="Regions">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          <span>Regions</span>
+        </a>
+        <a class="nav-link" href="#forecast" data-label="Forecast">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          <span>Forecast</span>
+        </a>
       </nav>
-      <button id="runEtlBtn" class="btn-primary">⚡ Run ETL</button>
+
+      <div class="sidebar-footer">
+        <div class="system-status">
+          <span class="status-dot"></span>
+          <span class="status-text">System Online</span>
+        </div>
+        <button id="runEtlBtn" class="sync-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
+            <polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+          </svg>
+          Sync Data
+        </button>
+        <div class="sidebar-clock" id="sidebarClock"></div>
+      </div>
+    </aside>
+
+    <!-- ── Main Area ─────────────────────────────────────────── -->
+    <div class="main-area">
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-toggle" id="menuToggle" aria-label="Toggle sidebar">
+            <span></span><span></span><span></span>
+          </button>
+          <div class="breadcrumb">
+            <span class="bc-root">Meridian</span>
+            <span class="bc-sep">/</span>
+            <span class="bc-page" id="bcPage">Overview</span>
+          </div>
+        </div>
+        <div id="etlBanner" class="etl-banner hidden"></div>
+      </header>
+
+      <main class="content" id="mainContent">
+
+        <!-- ── 01 OVERVIEW ──────────────────────────────────── -->
+        <section id="overview" class="section">
+          <div class="section-head">
+            <div class="section-num">01</div>
+            <div class="section-info">
+              <h2 class="section-title">Key Metrics</h2>
+              <p class="section-desc">Real-time performance indicators</p>
+            </div>
+          </div>
+          <div class="kpi-grid">
+            <div class="kpi-card kpi-revenue">
+              <div class="kpi-top">
+                <svg class="kpi-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <span class="kpi-trend up">↑ 12.4%</span>
+              </div>
+              <div class="kpi-value" id="kpiRevenue">—</div>
+              <div class="kpi-label">Total Revenue</div>
+              <div class="kpi-bar"><div class="kpi-bar-fill" style="width:87%"></div></div>
+            </div>
+            <div class="kpi-card kpi-orders">
+              <div class="kpi-top">
+                <svg class="kpi-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+                </svg>
+                <span class="kpi-trend up">↑ 8.1%</span>
+              </div>
+              <div class="kpi-value" id="kpiOrders">—</div>
+              <div class="kpi-label">Total Orders</div>
+              <div class="kpi-bar"><div class="kpi-bar-fill" style="width:73%"></div></div>
+            </div>
+            <div class="kpi-card kpi-units">
+              <div class="kpi-top">
+                <svg class="kpi-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                </svg>
+                <span class="kpi-trend up">↑ 5.3%</span>
+              </div>
+              <div class="kpi-value" id="kpiUnits">—</div>
+              <div class="kpi-label">Units Sold</div>
+              <div class="kpi-bar"><div class="kpi-bar-fill" style="width:65%"></div></div>
+            </div>
+            <div class="kpi-card kpi-customers">
+              <div class="kpi-top">
+                <svg class="kpi-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span class="kpi-trend neutral">→ 0.0%</span>
+              </div>
+              <div class="kpi-value" id="kpiCustomers">—</div>
+              <div class="kpi-label">Unique Customers</div>
+              <div class="kpi-bar"><div class="kpi-bar-fill" style="width:40%"></div></div>
+            </div>
+            <div class="kpi-card kpi-avg">
+              <div class="kpi-top">
+                <svg class="kpi-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <line x1="12" y1="1" x2="12" y2="23"/>
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <span class="kpi-trend up">↑ 3.9%</span>
+              </div>
+              <div class="kpi-value" id="kpiAvgOrder">—</div>
+              <div class="kpi-label">Avg Order Value</div>
+              <div class="kpi-bar"><div class="kpi-bar-fill" style="width:91%"></div></div>
+            </div>
+            <div class="kpi-card kpi-products">
+              <div class="kpi-top">
+                <svg class="kpi-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                  <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                <span class="kpi-trend up">↑ 2.1%</span>
+              </div>
+              <div class="kpi-value" id="kpiProducts">—</div>
+              <div class="kpi-label">Products Sold</div>
+              <div class="kpi-bar"><div class="kpi-bar-fill" style="width:30%"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 02 SALES ─────────────────────────────────────── -->
+        <section id="sales" class="section">
+          <div class="section-head">
+            <div class="section-num">02</div>
+            <div class="section-info">
+              <h2 class="section-title">Sales Trend</h2>
+              <p class="section-desc">Revenue &amp; volume over time</p>
+            </div>
+            <div class="section-controls">
+              <div class="toggle-group" id="granGroup">
+                <button class="tgl active" data-val="monthly">Month</button>
+                <button class="tgl" data-val="weekly">Week</button>
+                <button class="tgl" data-val="daily">Day</button>
+              </div>
+            </div>
+          </div>
+          <div class="chart-panel">
+            <canvas id="salesChart"></canvas>
+          </div>
+        </section>
+
+        <!-- ── 03 PRODUCTS ──────────────────────────────────── -->
+        <section id="products" class="section">
+          <div class="section-head">
+            <div class="section-num">03</div>
+            <div class="section-info">
+              <h2 class="section-title">Products</h2>
+              <p class="section-desc">Top performers &amp; category split</p>
+            </div>
+          </div>
+          <div class="dual-panel">
+            <div class="chart-panel">
+              <div class="panel-label">Top 10 by Revenue</div>
+              <canvas id="topProductsChart"></canvas>
+            </div>
+            <div class="chart-panel">
+              <div class="panel-label">Revenue by Category</div>
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 04 REGIONS ───────────────────────────────────── -->
+        <section id="regions" class="section">
+          <div class="section-head">
+            <div class="section-num">04</div>
+            <div class="section-info">
+              <h2 class="section-title">Regions</h2>
+              <p class="section-desc">Geographic sales distribution</p>
+            </div>
+          </div>
+          <div class="dual-panel">
+            <div class="chart-panel">
+              <div class="panel-label">Revenue by Region</div>
+              <canvas id="regionChart"></canvas>
+            </div>
+            <div class="chart-panel">
+              <div class="panel-label">Orders by Region</div>
+              <canvas id="regionOrdersChart"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- ── 05 FORECAST ──────────────────────────────────── -->
+        <section id="forecast" class="section">
+          <div class="section-head">
+            <div class="section-num">05</div>
+            <div class="section-info">
+              <h2 class="section-title">Forecast</h2>
+              <p class="section-desc">Predictive revenue model</p>
+            </div>
+            <div class="section-controls">
+              <div class="toggle-group" id="horizonGroup">
+                <button class="tgl" data-val="14">14d</button>
+                <button class="tgl active" data-val="30">30d</button>
+                <button class="tgl" data-val="60">60d</button>
+                <button class="tgl" data-val="90">90d</button>
+              </div>
+            </div>
+          </div>
+          <div id="forecastMeta" class="forecast-ribbon"></div>
+          <div class="chart-panel">
+            <canvas id="forecastChart"></canvas>
+          </div>
+        </section>
+
+      </main>
+
+      <footer class="site-footer">
+        Meridian Commerce Analytics · Powered by Flask &amp; Chart.js
+      </footer>
     </div>
-  </header>
 
-  <main class="container">
-
-    <!-- ETL status banner -->
-    <div id="etlBanner" class="banner hidden"></div>
-
-    <!-- ── KPI Cards ───────────────────────────────────────────── -->
-    <section id="kpis" class="section">
-      <h2 class="section-title">Key Performance Indicators</h2>
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <span class="kpi-icon">💰</span>
-          <div class="kpi-value" id="kpiRevenue">—</div>
-          <div class="kpi-label">Total Revenue</div>
-        </div>
-        <div class="kpi-card">
-          <span class="kpi-icon">🛒</span>
-          <div class="kpi-value" id="kpiOrders">—</div>
-          <div class="kpi-label">Total Orders</div>
-        </div>
-        <div class="kpi-card">
-          <span class="kpi-icon">📦</span>
-          <div class="kpi-value" id="kpiUnits">—</div>
-          <div class="kpi-label">Units Sold</div>
-        </div>
-        <div class="kpi-card">
-          <span class="kpi-icon">👥</span>
-          <div class="kpi-value" id="kpiCustomers">—</div>
-          <div class="kpi-label">Unique Customers</div>
-        </div>
-        <div class="kpi-card">
-          <span class="kpi-icon">🏷️</span>
-          <div class="kpi-value" id="kpiAvgOrder">—</div>
-          <div class="kpi-label">Avg Order Value</div>
-        </div>
-        <div class="kpi-card">
-          <span class="kpi-icon">🎁</span>
-          <div class="kpi-value" id="kpiProducts">—</div>
-          <div class="kpi-label">Products Sold</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── Sales Trend ────────────────────────────────────────── -->
-    <section id="sales" class="section">
-      <div class="section-header">
-        <h2 class="section-title">Sales Over Time</h2>
-        <div class="controls">
-          <select id="granularity" class="select">
-            <option value="monthly" selected>Monthly</option>
-            <option value="weekly">Weekly</option>
-            <option value="daily">Daily</option>
-          </select>
-        </div>
-      </div>
-      <div class="chart-card">
-        <canvas id="salesChart"></canvas>
-      </div>
-    </section>
-
-    <!-- ── Top Products + Category ───────────────────────────── -->
-    <section id="products" class="section">
-      <h2 class="section-title">Products</h2>
-      <div class="two-col">
-        <div class="chart-card">
-          <h3 class="chart-title">Top 10 Products by Revenue</h3>
-          <canvas id="topProductsChart"></canvas>
-        </div>
-        <div class="chart-card">
-          <h3 class="chart-title">Revenue by Category</h3>
-          <canvas id="categoryChart"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── Sales by Region ────────────────────────────────────── -->
-    <section id="regions" class="section">
-      <h2 class="section-title">Sales by Region</h2>
-      <div class="two-col">
-        <div class="chart-card">
-          <h3 class="chart-title">Revenue by Region</h3>
-          <canvas id="regionChart"></canvas>
-        </div>
-        <div class="chart-card">
-          <h3 class="chart-title">Orders by Region</h3>
-          <canvas id="regionOrdersChart"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <!-- ── Sales Forecast ─────────────────────────────────────── -->
-    <section id="forecast" class="section">
-      <div class="section-header">
-        <h2 class="section-title">Sales Forecast</h2>
-        <div class="controls">
-          <select id="forecastHorizon" class="select">
-            <option value="14">14 days</option>
-            <option value="30" selected>30 days</option>
-            <option value="60">60 days</option>
-            <option value="90">90 days</option>
-          </select>
-        </div>
-      </div>
-      <div id="forecastMeta" class="forecast-meta"></div>
-      <div class="chart-card">
-        <canvas id="forecastChart"></canvas>
-      </div>
-    </section>
-
-  </main>
-
-  <footer class="footer">
-    <p>Commerce Analytics Dashboard — Powered by Flask &amp; Chart.js</p>
-  </footer>
-
+  </div>
   <script src="/static/js/app.js"></script>
 </body>
 </html>
