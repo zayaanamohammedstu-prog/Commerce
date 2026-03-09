@@ -1,0 +1,21 @@
+customer_id,name,email,region,country
+C001,Alice Johnson,alice@example.com,North America,USA
+C002,Bob Smith,bob@example.com,North America,Canada
+C003,Clara Davis,clara@example.com,Europe,UK
+C004,David Lee,david@example.com,Europe,Germany
+C005,Emma Wilson,emma@example.com,Asia Pacific,Australia
+C006,Frank Miller,frank@example.com,Asia Pacific,Japan
+C007,Grace Brown,grace@example.com,North America,USA
+C008,Henry Taylor,henry@example.com,Europe,France
+C009,Irene Martinez,irene@example.com,Latin America,Brazil
+C010,Jack Anderson,jack@example.com,Latin America,Mexico
+C011,Karen Thomas,karen@example.com,North America,USA
+C012,Liam Jackson,liam@example.com,Asia Pacific,India
+C013,Mia White,mia@example.com,Europe,Spain
+C014,Noah Harris,noah@example.com,Middle East,UAE
+C015,Olivia Martin,olivia@example.com,Africa,South Africa
+C016,Paul Garcia,paul@example.com,North America,USA
+C017,Quinn Robinson,quinn@example.com,Europe,Netherlands
+C018,Rachel Lewis,rachel@example.com,Asia Pacific,Singapore
+C019,Sam Walker,sam@example.com,North America,Canada
+C020,Tina Hall,tina@example.com,Europe,Italy
