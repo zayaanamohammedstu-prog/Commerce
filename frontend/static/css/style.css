@@ -32,11 +32,30 @@
   --mono: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
 }
 
+/* ── Light Mode Variables ────────────────────────────────── */
+[data-theme="light"] {
+  --bg:           #f0f4f8;
+  --sidebar-bg:   #ffffff;
+  --card-bg:      #ffffff;
+  --card-hover:   #f8fafc;
+  --border:       rgba(0, 180, 145, .35);
+  --border-dim:   rgba(0, 0, 0, .08);
+
+  --primary-dim:  rgba(0, 212, 170, .1);
+  --primary-glow: rgba(0, 212, 170, .22);
+
+  --text:         #1a2233;
+  --text-muted:   #64748b;
+  --text-dim:     #475569;
+
+  --shadow:       0 4px 32px rgba(0, 0, 0, .1);
+}
+
 /* ── Custom Scrollbar ────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,.09); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.16); }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,.35); }
 
 /* ── Base ────────────────────────────────────────────────── */
 html, body { height: 100%; }
@@ -60,6 +79,11 @@ body::before {
   background-size: 44px 44px;
   pointer-events: none;
   z-index: 0;
+}
+[data-theme="light"] body::before {
+  background-image:
+    linear-gradient(rgba(0,0,0,.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,.04) 1px, transparent 1px);
 }
 
 /* ── App Shell ───────────────────────────────────────────── */
@@ -272,6 +296,13 @@ body::before {
   align-items: center;
   gap: 1rem;
 }
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
 .menu-toggle {
   display: none;
   flex-direction: column;
@@ -297,6 +328,30 @@ body::before {
 .bc-root  { color: var(--text-muted); }
 .bc-sep   { color: var(--text-muted); opacity: .4; }
 .bc-page  { color: var(--text); font-weight: 600; }
+
+/* ── Theme Toggle ────────────────────────────────────────── */
+.theme-toggle {
+  background: none;
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: .38rem .48rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s, color .2s, border-color .2s;
+  flex-shrink: 0;
+}
+.theme-toggle:hover {
+  background: var(--primary-dim);
+  color: var(--primary);
+  border-color: var(--border);
+}
+.theme-toggle svg { width: 16px; height: 16px; }
+/* Show sun in dark mode, moon in light mode */
+[data-theme="dark"]  .theme-toggle .icon-moon { display: none; }
+[data-theme="light"] .theme-toggle .icon-sun  { display: none; }
 
 /* ── ETL Banner ──────────────────────────────────────────── */
 .etl-banner {
@@ -348,6 +403,7 @@ body::before {
   user-select: none;
   margin-top: -.3rem;
 }
+[data-theme="light"] .section-num { color: rgba(0,0,0,.055); }
 .section-info { flex: 1; min-width: 0; }
 .section-title {
   font-size: 1.2rem;
@@ -386,8 +442,8 @@ body::before {
   transition: background .15s, color .15s;
   letter-spacing: .02em;
 }
-.tgl:hover  { color: var(--text); background: rgba(255,255,255,.04); }
-.tgl.active { background: var(--primary); color: #060a12; font-weight: 700; }
+.tgl:hover  { color: var(--text); background: var(--primary-dim); }
+.tgl.active { background: var(--primary); color: var(--bg); font-weight: 700; }
 
 /* ── KPI Grid ────────────────────────────────────────────── */
 .kpi-grid {
@@ -450,7 +506,7 @@ body::before {
 }
 .kpi-trend.up      { color: var(--green);  background: rgba(34,197,94,.12); }
 .kpi-trend.down    { color: #ef4444;       background: rgba(239,68,68,.12); }
-.kpi-trend.neutral { color: var(--text-muted); background: rgba(255,255,255,.05); }
+.kpi-trend.neutral { color: var(--text-muted); background: var(--border-dim); }
 
 .kpi-value {
   font-size: 1.7rem;
@@ -469,7 +525,7 @@ body::before {
 .kpi-bar {
   margin-top: .45rem;
   height: 3px;
-  background: rgba(255,255,255,.06);
+  background: var(--border-dim);
   border-radius: 2px;
   overflow: hidden;
 }
@@ -566,7 +622,7 @@ body::before {
     transition: left .3s cubic-bezier(.4,0,.2,1);
     z-index: 200;
   }
-  .sidebar.open { left: 0; box-shadow: 4px 0 28px rgba(0,0,0,.7); }
+  .sidebar.open { left: 0; box-shadow: 4px 0 28px rgba(0,0,0,.18); }
   .menu-toggle  { display: flex; }
   .dual-panel   { grid-template-columns: 1fr; }
   .content      { padding: 1.5rem 1rem 2rem; }
