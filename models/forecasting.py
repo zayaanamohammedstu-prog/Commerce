@@ -88,6 +88,89 @@ def forecast_sales(horizon: int = 30, db_path: str = DB_PATH) -> List[Dict]:
     return results
 
 
+def forecast_from_dataframe(df: pd.DataFrame, horizon: int = 30) -> Dict:
+    """
+    Forecast from an uploaded DataFrame.
+
+    Expected columns (case-insensitive):
+    - ``date``    – date strings parseable by pandas
+    - ``revenue`` – numeric daily revenue  (or ``total_amount`` as alias)
+      OR both ``quantity`` and ``unit_price`` to compute revenue on the fly.
+
+    Returns a dict with keys: forecast, horizon, training_days,
+    training_start, training_end, mean_daily_revenue.
+    """
+    df = df.copy()
+    df.columns = df.columns.str.strip().str.lower()
+
+    # Resolve revenue column
+    if "revenue" not in df.columns:
+        if "total_amount" in df.columns:
+            df["revenue"] = df["total_amount"]
+        elif "quantity" in df.columns and "unit_price" in df.columns:
+            df["revenue"] = (
+                pd.to_numeric(df["quantity"], errors="coerce")
+                * pd.to_numeric(df["unit_price"], errors="coerce")
+            )
+        else:
+            raise ValueError(
+                "CSV must contain a 'revenue' column, a 'total_amount' column, "
+                "or both 'quantity' and 'unit_price' columns."
+            )
+
+    if "date" not in df.columns:
+        raise ValueError("CSV must contain a 'date' column.")
+
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.dropna(subset=["date"])
+    df["revenue"] = pd.to_numeric(df["revenue"], errors="coerce").fillna(0.0)
+
+    # Aggregate to daily totals
+    series = df.groupby("date")["revenue"].sum().sort_index()
+    if series.empty:
+        raise ValueError("No valid data rows found in the uploaded CSV.")
+
+    # Fill any missing calendar days
+    full_idx = pd.date_range(series.index.min(), series.index.max(), freq="D")
+    series = series.reindex(full_idx, fill_value=0.0)
+
+    last_date = series.index[-1].date()
+    # Weekly seasonality needs at least 2 complete periods (14 days)
+    _MIN_DAYS_FOR_SEASONAL = 14
+    use_seasonal = len(series) >= _MIN_DAYS_FOR_SEASONAL
+
+    if _HAS_STATSMODELS and len(series) >= 2:
+        try:
+            model = ExponentialSmoothing(
+                series,
+                trend="add",
+                seasonal="add" if use_seasonal else None,
+                seasonal_periods=7 if use_seasonal else None,
+                initialization_method="estimated",
+            )
+            fit = model.fit(optimized=True, disp=False)
+            raw = fit.forecast(horizon)
+            values = [max(0.0, round(v, 2)) for v in raw]
+        except Exception:
+            values = _moving_average_forecast(series, horizon)
+    else:
+        values = _moving_average_forecast(series, horizon)
+
+    forecast_results = [
+        {"date": (last_date + timedelta(days=i + 1)).isoformat(), "forecast": val}
+        for i, val in enumerate(values)
+    ]
+
+    return {
+        "horizon": horizon,
+        "training_days": len(series),
+        "training_start": series.index[0].date().isoformat(),
+        "training_end": last_date.isoformat(),
+        "mean_daily_revenue": round(float(series.mean()), 2),
+        "forecast": forecast_results,
+    }
+
+
 def get_model_summary(db_path: str = DB_PATH) -> Dict:
     """Return high-level metadata about the forecasting model and data."""
     series = _load_daily_sales(db_path)

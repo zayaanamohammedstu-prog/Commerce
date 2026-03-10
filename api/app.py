@@ -10,13 +10,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from flask import Flask, jsonify, request, render_template, abort
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 import pandas as pd
 
 from warehouse.database import get_connection, DB_PATH
-from models.forecasting import forecast_sales, get_model_summary
+from models.forecasting import forecast_sales, get_model_summary, forecast_from_dataframe
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend", "templates")
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend", "static")
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
+_MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
 
 app = Flask(
     __name__,
@@ -63,6 +66,60 @@ def run_etl():
         return jsonify({"status": "success", "rows_loaded": counts})
     except Exception as exc:
         return jsonify({"status": "error", "message": str(exc)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Admin: upload CSV for prediction
+# ---------------------------------------------------------------------------
+
+@app.route("/api/admin/predict/upload", methods=["POST"])
+def predict_upload():
+    """Accept a CSV upload, run forecasting, and return predictions as JSON."""
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided."}), 400
+
+    file = request.files["file"]
+    if file.filename == "":
+        return jsonify({"error": "No file selected."}), 400
+
+    filename = secure_filename(file.filename)
+    if not filename:
+        return jsonify({"error": "Invalid filename."}), 400
+    if not filename.lower().endswith(".csv"):
+        return jsonify({"error": "Only CSV files are accepted."}), 400
+
+    # Check file size without reading the whole stream into memory
+    file.seek(0, 2)
+    size = file.tell()
+    file.seek(0)
+    if size > _MAX_UPLOAD_BYTES:
+        return jsonify({"error": f"File too large (max {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB)."}), 400
+
+    try:
+        horizon = min(int(request.form.get("horizon", 30)), 90)
+    except (TypeError, ValueError):
+        horizon = 30
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    # Prepend a short unique token to prevent filename collisions under concurrent uploads
+    import uuid as _uuid
+    save_path = os.path.join(UPLOAD_DIR, f"{_uuid.uuid4().hex[:8]}_{filename}")
+    file.save(save_path)
+
+    try:
+        df = pd.read_csv(save_path)
+        result = forecast_from_dataframe(df, horizon=horizon)
+        return jsonify(result)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 422
+    except Exception as exc:
+        return jsonify({"error": f"Processing error: {str(exc)}"}), 500
+    finally:
+        # Remove the uploaded file after processing to avoid disk accumulation
+        try:
+            os.remove(save_path)
+        except OSError:
+            pass
 
 
 # ---------------------------------------------------------------------------

@@ -432,3 +432,201 @@ function loadAll() {
 }
 
 loadAll();
+
+/* ── Admin helpers ───────────────────────────────────────── */
+const STATUS_MSG_DURATION_MS = 6000;
+
+/* ── Admin: ETL card ─────────────────────────────────────── */
+const adminEtlBtn    = document.getElementById('adminEtlBtn');
+const adminEtlStatus = document.getElementById('adminEtlStatus');
+
+function setAdminStatus(el, msg, type) {
+  el.textContent = msg;
+  el.className   = `admin-status ${type}`;
+  el.classList.remove('hidden');
+  if (type !== 'info') setTimeout(() => el.classList.add('hidden'), STATUS_MSG_DURATION_MS);
+}
+
+adminEtlBtn.addEventListener('click', async () => {
+  adminEtlBtn.disabled = true;
+  setAdminStatus(adminEtlStatus, 'Syncing data pipeline…', 'info');
+  try {
+    const res  = await fetch('/api/etl/run', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok && data.status === 'success') {
+      const r = data.rows_loaded;
+      setAdminStatus(
+        adminEtlStatus,
+        `Sync complete · Products ${r.products} · Customers ${r.customers} · Sales ${r.sales}`,
+        'success'
+      );
+      loadAll();
+    } else {
+      setAdminStatus(adminEtlStatus, 'Error: ' + (data.message || 'unknown'), 'error');
+    }
+  } catch (e) {
+    setAdminStatus(adminEtlStatus, 'Network error: ' + e.message, 'error');
+  } finally {
+    adminEtlBtn.disabled = false;
+  }
+});
+
+/* ── Admin: Upload prediction ────────────────────────────── */
+const uploadFile      = document.getElementById('uploadFile');
+const uploadFilename  = document.getElementById('uploadFilename');
+const uploadSubmitBtn = document.getElementById('uploadSubmitBtn');
+const uploadStatus    = document.getElementById('uploadStatus');
+const uploadResults   = document.getElementById('uploadResults');
+const uploadDropzone  = document.getElementById('uploadDropzone');
+let   uploadHorizon   = '30';
+let   uploadForecastChartInst = null;
+
+// Horizon selector
+document.getElementById('uploadHorizonGroup').addEventListener('click', e => {
+  const btn = e.target.closest('.tgl');
+  if (!btn) return;
+  document.querySelectorAll('#uploadHorizonGroup .tgl').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  uploadHorizon = btn.dataset.val;
+});
+
+// File selection via input
+uploadFile.addEventListener('change', () => {
+  const file = uploadFile.files[0];
+  if (file) {
+    uploadFilename.textContent = file.name;
+    uploadFilename.classList.remove('hidden');
+    uploadSubmitBtn.disabled = false;
+  } else {
+    uploadFilename.classList.add('hidden');
+    uploadSubmitBtn.disabled = true;
+  }
+});
+
+// Drag & drop
+uploadDropzone.addEventListener('dragover',  e => { e.preventDefault(); uploadDropzone.classList.add('drag-over'); });
+uploadDropzone.addEventListener('dragleave', ()  => uploadDropzone.classList.remove('drag-over'));
+uploadDropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadDropzone.classList.remove('drag-over');
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    // Assign files to the hidden input so the change handler fires
+    const dt = new DataTransfer();
+    dt.items.add(files[0]);
+    uploadFile.files = dt.files;
+    uploadFile.dispatchEvent(new Event('change'));
+  }
+});
+
+// Submit
+uploadSubmitBtn.addEventListener('click', async () => {
+  const file = uploadFile.files[0];
+  if (!file) return;
+
+  uploadSubmitBtn.disabled = true;
+  setAdminStatus(uploadStatus, 'Uploading and generating forecast…', 'info');
+  uploadResults.classList.add('hidden');
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('horizon', uploadHorizon);
+
+  try {
+    const res  = await fetch('/api/admin/predict/upload', { method: 'POST', body: form });
+    const data = await res.json();
+    if (res.ok) {
+      setAdminStatus(uploadStatus, `Forecast generated · ${data.forecast.length} days ahead`, 'success');
+      renderUploadResults(data);
+    } else {
+      setAdminStatus(uploadStatus, 'Error: ' + (data.error || 'Unknown error'), 'error');
+    }
+  } catch (e) {
+    setAdminStatus(uploadStatus, 'Network error: ' + e.message, 'error');
+  } finally {
+    uploadSubmitBtn.disabled = false;
+  }
+});
+
+function renderUploadResults(data) {
+  // Metadata ribbon
+  document.getElementById('uploadForecastRibbon').innerHTML = `
+    <div class="frib-item">
+      <span class="frib-label">Training Days</span>
+      <span class="frib-value">${data.training_days}</span>
+    </div>
+    <div class="frib-item">
+      <span class="frib-label">Training Start</span>
+      <span class="frib-value">${data.training_start}</span>
+    </div>
+    <div class="frib-item">
+      <span class="frib-label">Training End</span>
+      <span class="frib-value">${data.training_end}</span>
+    </div>
+    <div class="frib-item">
+      <span class="frib-label">Mean Daily Rev</span>
+      <span class="frib-value">${fmtCurrency(data.mean_daily_revenue)}</span>
+    </div>
+    <div class="frib-item">
+      <span class="frib-label">Horizon</span>
+      <span class="frib-value">${data.horizon}d</span>
+    </div>
+  `;
+
+  document.getElementById('uploadResultsDesc').textContent =
+    `${data.training_days} training days · ${data.horizon}-day forecast`;
+
+  // Chart
+  destroyChart(uploadForecastChartInst);
+  uploadForecastChartInst = new Chart(document.getElementById('uploadForecastChart'), {
+    type: 'line',
+    data: {
+      labels: data.forecast.map(d => d.date),
+      datasets: [{
+        label: 'Forecasted Revenue',
+        data: data.forecast.map(d => d.forecast),
+        borderColor: C.violet,
+        backgroundColor: ctx => {
+          const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, ctx.chart.height);
+          g.addColorStop(0, 'rgba(155,143,252,.28)');
+          g.addColorStop(1, 'rgba(155,143,252,0)');
+          return g;
+        },
+        tension: .45,
+        fill: true,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        pointBackgroundColor: C.violet,
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } },
+        y: {
+          grid:  { color: chartGridColor() },
+          title: { display: true, text: 'Revenue ($)', color: chartTextColor() },
+        },
+      },
+      plugins: {
+        legend:  { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${fmtCurrency(ctx.parsed.y)}` } },
+      },
+    },
+  });
+
+  // Table
+  const rows = data.forecast.map(d =>
+    `<tr><td>${d.date}</td><td>${fmtCurrency(d.forecast)}</td></tr>`
+  ).join('');
+  document.getElementById('uploadForecastTable').innerHTML = `
+    <table class="forecast-table">
+      <thead><tr><th>Date</th><th>Forecast</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+
+  uploadResults.classList.remove('hidden');
+  uploadResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}

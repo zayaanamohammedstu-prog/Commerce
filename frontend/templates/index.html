@@ -54,6 +54,12 @@
           </svg>
           <span>Forecast</span>
         </a>
+        <a class="nav-link" href="#admin" data-label="Admin">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <span>Admin</span>
+        </a>
       </nav>
 
       <div class="sidebar-footer">
@@ -275,6 +281,125 @@
           <div class="chart-panel">
             <canvas id="forecastChart"></canvas>
           </div>
+        </section>
+
+        <!-- ── 06 ADMIN ──────────────────────────────────────── -->
+        <section id="admin" class="section">
+          <div class="section-head">
+            <div class="section-num">06</div>
+            <div class="section-info">
+              <h2 class="section-title">Admin</h2>
+              <p class="section-desc">Data pipeline &amp; prediction tools</p>
+            </div>
+          </div>
+
+          <div class="admin-grid">
+
+            <!-- ETL Card -->
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <div class="admin-card-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/>
+                    <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                  </svg>
+                </div>
+                <h3 class="admin-card-title">Data Pipeline</h3>
+              </div>
+              <p class="admin-card-desc">
+                Trigger the ETL pipeline to extract, transform, and load the latest
+                source data into the analytics warehouse.
+              </p>
+              <button id="adminEtlBtn" class="admin-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/>
+                  <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                </svg>
+                Run ETL Sync
+              </button>
+              <div id="adminEtlStatus" class="admin-status hidden"></div>
+            </div>
+
+            <!-- Upload Prediction Card -->
+            <div class="admin-card">
+              <div class="admin-card-header">
+                <div class="admin-card-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="16 16 12 12 8 16"/>
+                    <line x1="12" y1="12" x2="12" y2="21"/>
+                    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                  </svg>
+                </div>
+                <h3 class="admin-card-title">Predict from CSV</h3>
+              </div>
+              <p class="admin-card-desc">
+                Upload a CSV with <code>date</code> and <code>revenue</code>
+                columns (or <code>quantity</code> + <code>unit_price</code>) to
+                generate a sales forecast using Holt-Winters or moving average.
+              </p>
+
+              <div class="upload-form">
+                <div class="upload-dropzone" id="uploadDropzone">
+                  <input type="file" id="uploadFile" accept=".csv" />
+                  <label for="uploadFile">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="12" y1="18" x2="12" y2="12"/>
+                      <line x1="9" y1="15" x2="15" y2="15"/>
+                    </svg>
+                    <span>Choose CSV file or drag &amp; drop</span>
+                  </label>
+                  <div id="uploadFilename" class="upload-filename hidden"></div>
+                </div>
+
+                <div class="upload-controls">
+                  <div class="upload-horizon">
+                    <label>Forecast horizon</label>
+                    <div class="toggle-group" id="uploadHorizonGroup">
+                      <button class="tgl" data-val="14">14d</button>
+                      <button class="tgl active" data-val="30">30d</button>
+                      <button class="tgl" data-val="60">60d</button>
+                      <button class="tgl" data-val="90">90d</button>
+                    </div>
+                  </div>
+                  <button id="uploadSubmitBtn" class="admin-btn" disabled>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="20" x2="18" y2="10"/>
+                      <line x1="12" y1="20" x2="12" y2="4"/>
+                      <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                    Generate Forecast
+                  </button>
+                </div>
+              </div>
+
+              <div id="uploadStatus" class="admin-status hidden"></div>
+            </div>
+
+          </div><!-- /.admin-grid -->
+
+          <!-- Upload prediction results -->
+          <div id="uploadResults" class="upload-results hidden">
+            <div class="section-head" style="margin-top:.5rem">
+              <div class="section-info">
+                <h3 class="section-title" style="font-size:1rem">Prediction Results</h3>
+                <p class="section-desc" id="uploadResultsDesc"></p>
+              </div>
+            </div>
+            <div class="forecast-ribbon" id="uploadForecastRibbon"></div>
+            <div class="dual-panel">
+              <div class="chart-panel">
+                <div class="panel-label">Forecasted Revenue</div>
+                <canvas id="uploadForecastChart"></canvas>
+              </div>
+              <div class="chart-panel">
+                <div class="panel-label">Forecast Table</div>
+                <div id="uploadForecastTable" class="forecast-table-wrap"></div>
+              </div>
+            </div>
+          </div>
+
         </section>
 
       </main>
