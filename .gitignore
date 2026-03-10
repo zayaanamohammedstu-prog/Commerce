@@ -17,6 +17,9 @@ env/
 # Database (generated at runtime)
 data/commerce.db
 
+# Uploaded prediction CSVs (generated at runtime)
+uploads/
+
 # Node / npm
 node_modules/
 package-lock.json

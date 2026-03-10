@@ -179,3 +179,81 @@ def test_etl_trigger_idempotent(client):
     data = res.get_json()
     assert data["status"] == "success"
     assert data["rows_loaded"]["sales"] == 0
+
+
+# ── Admin: Upload prediction ───────────────────────────────────────────────────
+
+import io
+from datetime import date, timedelta
+
+
+def _make_csv(rows, header="date,revenue"):
+    """Build an in-memory CSV bytes object."""
+    lines = [header] + [f"{r[0]},{r[1]}" for r in rows]
+    return io.BytesIO("\n".join(lines).encode())
+
+
+def test_predict_upload_success(client):
+    """Upload a valid CSV → 200 with forecast list."""
+    start = date(2024, 1, 1)
+    rows  = [(str(start + timedelta(days=i)), 100 + i * 3) for i in range(20)]
+    csv_data = _make_csv(rows)
+    res = client.post(
+        "/api/admin/predict/upload",
+        data={"file": (csv_data, "sales.csv", "text/csv"), "horizon": "7"},
+        content_type="multipart/form-data",
+    )
+    assert res.status_code == 200
+    data = res.get_json()
+    assert "forecast" in data
+    assert len(data["forecast"]) == 7
+    assert "date"     in data["forecast"][0]
+    assert "forecast" in data["forecast"][0]
+    assert data["horizon"] == 7
+    assert "training_days"       in data
+    assert "mean_daily_revenue"  in data
+
+
+def test_predict_upload_missing_file(client):
+    """No file part → 400."""
+    res = client.post("/api/admin/predict/upload", data={}, content_type="multipart/form-data")
+    assert res.status_code == 400
+    assert "error" in res.get_json()
+
+
+def test_predict_upload_invalid_extension(client):
+    """Non-CSV file → 400."""
+    res = client.post(
+        "/api/admin/predict/upload",
+        data={"file": (io.BytesIO(b"col1,col2\n1,2"), "data.txt", "text/plain")},
+        content_type="multipart/form-data",
+    )
+    assert res.status_code == 400
+    assert "error" in res.get_json()
+
+
+def test_predict_upload_missing_required_column(client):
+    """CSV without date column → 422."""
+    csv_data = io.BytesIO(b"amount,qty\n100,2\n200,3\n300,4")
+    res = client.post(
+        "/api/admin/predict/upload",
+        data={"file": (csv_data, "bad.csv", "text/csv")},
+        content_type="multipart/form-data",
+    )
+    assert res.status_code == 422
+    assert "error" in res.get_json()
+
+
+def test_predict_upload_total_amount_column(client):
+    """CSV with total_amount column (alias for revenue) → 200."""
+    start = date(2024, 3, 1)
+    rows  = [(str(start + timedelta(days=i)), 250 + i * 5) for i in range(20)]
+    csv_data = _make_csv(rows, header="date,total_amount")
+    res = client.post(
+        "/api/admin/predict/upload",
+        data={"file": (csv_data, "totals.csv", "text/csv"), "horizon": "14"},
+        content_type="multipart/form-data",
+    )
+    assert res.status_code == 200
+    data = res.get_json()
+    assert len(data["forecast"]) == 14
