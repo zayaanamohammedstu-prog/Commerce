@@ -120,7 +120,10 @@ def client_required(f):
             if last:
                 try:
                     last_dt = datetime.fromisoformat(last)
-                    if (datetime.utcnow() - last_dt).days >= _INACTIVITY_DAYS:
+                    # Make naive datetimes timezone-aware for comparison
+                    if last_dt.tzinfo is None:
+                        last_dt = last_dt.replace(tzinfo=timezone.utc)
+                    if (datetime.now(timezone.utc) - last_dt).days >= _INACTIVITY_DAYS:
                         session.clear()
                         if request.is_json or request.path.startswith("/api/"):
                             return jsonify({"error": "Session expired due to inactivity"}), 401
@@ -131,7 +134,7 @@ def client_required(f):
             # Update activity timestamp
             conn = _platform_db()
             conn.execute("UPDATE app_users SET last_activity_at = ? WHERE id = ?",
-                         (datetime.utcnow().isoformat(), user["id"]))
+                         (datetime.now(timezone.utc).isoformat(), user["id"]))
             conn.commit()
             conn.close()
         return f(*args, **kwargs)
@@ -216,7 +219,7 @@ def login():
         # Update last_login_at
         conn = _platform_db()
         conn.execute("UPDATE app_users SET last_login_at = ?, last_activity_at = ? WHERE id = ?",
-                     (datetime.utcnow().isoformat(), datetime.utcnow().isoformat(), user["id"]))
+                     (datetime.now(timezone.utc).isoformat(), datetime.now(timezone.utc).isoformat(), user["id"]))
         conn.commit()
         conn.close()
 
@@ -430,7 +433,7 @@ def api_admin_create_user():
     status = "approved"
     conn.execute(
         "INSERT INTO app_users (email, password_hash, role, status, business_name, approved_at) VALUES (?, ?, ?, ?, ?, ?)",
-        (email, generate_password_hash(password), role, status, business, datetime.utcnow().isoformat())
+        (email, generate_password_hash(password), role, status, business, datetime.now(timezone.utc).isoformat())
     )
     conn.commit()
     user_id = conn.execute("SELECT id FROM app_users WHERE email = ?", (email,)).fetchone()["id"]
@@ -456,7 +459,7 @@ def api_admin_approve_user(user_id):
         return jsonify({"status": "already_approved"}), 200
 
     conn.execute("UPDATE app_users SET status='approved', approved_at=? WHERE id=?",
-                 (datetime.utcnow().isoformat(), user_id))
+                 (datetime.now(timezone.utc).isoformat(), user_id))
     conn.commit()
 
     # Create client DB
@@ -728,7 +731,7 @@ def api_client_report_sales_csv():
         df.to_csv(buf, index=False)
         buf.seek(0)
         return send_file(buf, mimetype="text/csv", as_attachment=True,
-                         download_name=f"sales_report_{datetime.utcnow().strftime('%Y%m%d')}.csv")
+                         download_name=f"sales_report_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv")
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

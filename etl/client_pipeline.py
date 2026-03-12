@@ -90,7 +90,7 @@ def _build_dimensions(df: pd.DataFrame):
         # Generate product IDs from category or set default
         cat_col = "category" if "category" in df.columns else None
         df["product_id"] = df.apply(
-            lambda r: f"PROD_{r[cat_col][:8].upper().replace(' ', '_')}" if cat_col else "PROD_DEFAULT",
+            lambda r: f"PROD_{str(r[cat_col])[:8].upper().replace(' ', '_')}" if cat_col and pd.notna(r.get(cat_col)) else "PROD_DEFAULT",
             axis=1
         )
         products = df[["product_id"]].drop_duplicates().copy()
