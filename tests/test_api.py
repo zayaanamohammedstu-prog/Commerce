@@ -542,3 +542,165 @@ def test_client_inactivity_logout(client):
 
     with client.session_transaction() as sess:
         sess.clear()
+
+
+# ── New required route aliases ────────────────────────────────────────────────
+
+def test_sales_trend_alias(client):
+    """GET /api/sales/trend is an alias for /api/sales/timeseries."""
+    res = client.get("/api/sales/trend?granularity=monthly")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+    assert "period" in data[0]
+    assert "revenue" in data[0]
+
+
+def test_top_products_alias(client):
+    """GET /api/top-products is an alias for /api/products/top."""
+    res = client.get("/api/top-products")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+    assert "name" in data[0]
+    assert "revenue" in data[0]
+
+
+def test_regions_alias(client):
+    """GET /api/regions is an alias for /api/sales/region."""
+    res = client.get("/api/regions")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert isinstance(data, list)
+    assert len(data) > 0
+    assert "region" in data[0]
+    assert "revenue" in data[0]
+
+
+# ── Forecast persistence ──────────────────────────────────────────────────────
+
+def test_client_forecast_persists(client):
+    """GET /api/client/forecast stores a forecast_run and forecast_values row."""
+    import sqlite3
+    from warehouse.platform_db import get_platform_connection, create_client_db
+
+    # Create and approve a test client with a warehouse DB
+    _login_as_admin(client)
+    res = client.post(
+        "/api/admin/users/create",
+        json={
+            "email": "forecast_persist@test.com",
+            "password": "ForecastPass1!",
+            "role": "client",
+            "business_name": "Forecast Test Co",
+        },
+    )
+    assert res.status_code == 201
+    fp_id = res.get_json()["user_id"]
+
+    with client.session_transaction() as sess:
+        sess.clear()
+
+    # Upload some data so forecasting has something to work with
+    start = date(2024, 1, 1)
+    csv_data = io.BytesIO(
+        (
+            "\n".join(
+                ["date,revenue"]
+                + [f"{start + timedelta(days=i)},{100 + i}" for i in range(60)]
+            )
+        ).encode()
+    )
+
+    with client.session_transaction() as sess:
+        sess["user_id"] = fp_id
+        sess["role"] = "client"
+
+    upload_res = client.post(
+        "/api/client/upload",
+        data={"file": (csv_data, "sales.csv", "text/csv")},
+        content_type="multipart/form-data",
+    )
+    assert upload_res.status_code == 200
+
+    # Run forecast
+    forecast_res = client.get("/api/client/forecast?horizon=7")
+    assert forecast_res.status_code == 200
+    data = forecast_res.get_json()
+    assert len(data) == 7
+    assert "date" in data[0]
+    assert "forecast" in data[0]
+
+    # Verify persistence in the client warehouse DB
+    conn = get_platform_connection(flask_app.config["PLATFORM_DATABASE"])
+    row = conn.execute(
+        "SELECT db_path FROM app_clients WHERE user_id = ?", (fp_id,)
+    ).fetchone()
+    conn.close()
+    assert row is not None, "Client DB should be created after approval"
+
+    client_db_path = row["db_path"]
+    wh_conn = sqlite3.connect(client_db_path)
+    run_count = wh_conn.execute("SELECT COUNT(*) FROM forecast_runs").fetchone()[0]
+    val_count = wh_conn.execute("SELECT COUNT(*) FROM forecast_values").fetchone()[0]
+    wh_conn.close()
+
+    assert run_count >= 1, "At least one forecast_run should be persisted"
+    assert val_count >= 7, "At least 7 forecast_values should be persisted"
+
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
+# ── Export endpoints ──────────────────────────────────────────────────────────
+
+def test_export_sales_csv_requires_auth(client):
+    """/api/export/sales.csv requires authentication."""
+    with client.session_transaction() as sess:
+        sess.clear()
+    res = client.get("/api/export/sales.csv")
+    assert res.status_code in (401, 302)
+
+
+def test_export_forecast_csv_no_data(client):
+    """/api/export/forecast.csv returns 404 when no forecast has been run."""
+    # Create a fresh client with no forecast data
+    _login_as_admin(client)
+    res = client.post(
+        "/api/admin/users/create",
+        json={
+            "email": "no_forecast@test.com",
+            "password": "NoForecast1!",
+            "role": "client",
+            "business_name": "No Forecast Co",
+        },
+    )
+    assert res.status_code == 201
+    nf_id = res.get_json()["user_id"]
+
+    with client.session_transaction() as sess:
+        sess.clear()
+        sess["user_id"] = nf_id
+        sess["role"] = "client"
+
+    res = client.get("/api/export/forecast.csv")
+    assert res.status_code == 404
+
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
+# ── /api/upload alias ─────────────────────────────────────────────────────────
+
+def test_api_upload_requires_auth(client):
+    """/api/upload requires an authenticated client session."""
+    with client.session_transaction() as sess:
+        sess.clear()
+    res = client.post(
+        "/api/upload",
+        data={"file": (io.BytesIO(b"date,revenue\n2024-01-01,100"), "s.csv", "text/csv")},
+        content_type="multipart/form-data",
+    )
+    assert res.status_code in (401, 302)

@@ -677,11 +677,27 @@ def api_client_customers():
 @client_required
 def api_client_forecast():
     try:
-        from models.prophet_forecasting import forecast_sales_prophet
+        from models.prophet_forecasting import forecast_sales_prophet, get_forecast_summary
+        from models.forecasting import persist_forecast
         horizon = min(int(request.args.get("horizon", 30)), 90)
         user = _get_current_user()
         db_path = _get_client_db(user["id"])
         results = forecast_sales_prophet(horizon=horizon, db_path=db_path)
+
+        # Persist the forecast run + values
+        try:
+            summary = get_forecast_summary(db_path=db_path)
+            run_meta = {
+                "algorithm": summary.get("algorithm", "Unknown"),
+                "horizon": horizon,
+                "training_start": summary.get("training_start"),
+                "training_end": summary.get("training_end"),
+                "training_days": summary.get("training_days"),
+            }
+            persist_forecast(db_path, run_meta, results)
+        except Exception as persist_err:
+            app.logger.warning("Forecast persistence failed: %s", persist_err)
+
         return jsonify(results)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -888,6 +904,88 @@ def predict_upload():
             os.remove(save_path)
         except OSError:
             pass
+
+# ---------------------------------------------------------------------------
+# Required API endpoints (route aliases + new endpoints)
+# ---------------------------------------------------------------------------
+
+@app.route("/api/upload", methods=["POST"])
+@client_required
+def api_upload():
+    """POST /api/upload – upload a CSV/XLSX sales file (client authenticated)."""
+    return api_client_upload()
+
+
+@app.route("/api/sales/trend")
+def api_sales_trend():
+    """GET /api/sales/trend – alias for /api/sales/timeseries."""
+    return sales_timeseries()
+
+
+@app.route("/api/top-products")
+def api_top_products():
+    """GET /api/top-products – alias for /api/products/top."""
+    return top_products()
+
+
+@app.route("/api/regions")
+def api_regions():
+    """GET /api/regions – alias for /api/sales/region."""
+    return sales_by_region()
+
+
+# ---------------------------------------------------------------------------
+# Export endpoints
+# ---------------------------------------------------------------------------
+
+@app.route("/api/export/sales.csv")
+@client_required
+def api_export_sales_csv():
+    """GET /api/export/sales.csv – download full sales data for authenticated client."""
+    try:
+        import io
+        user = _get_current_user()
+        db_path = _get_client_db(user["id"])
+        df = _df("""
+            SELECT f.sale_id, f.date_id, p.name AS product, p.category,
+                   c.name AS customer, c.region, f.quantity, f.unit_price, f.total_amount
+            FROM fact_sales f
+            JOIN dim_products p ON f.product_id = p.product_id
+            JOIN dim_customers c ON f.customer_id = c.customer_id
+            ORDER BY f.date_id
+        """, db_path=db_path)
+        buf = io.BytesIO()
+        df.to_csv(buf, index=False)
+        buf.seek(0)
+        return send_file(buf, mimetype="text/csv", as_attachment=True,
+                         download_name=f"sales_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/export/forecast.csv")
+@client_required
+def api_export_forecast_csv():
+    """GET /api/export/forecast.csv – download the latest persisted forecast for authenticated client."""
+    try:
+        import io
+        from models.forecasting import get_latest_forecast_run
+        user = _get_current_user()
+        db_path = _get_client_db(user["id"])
+        run = get_latest_forecast_run(db_path)
+        if not run or not run.get("values"):
+            return jsonify({"error": "No forecast data available. Run a forecast first."}), 404
+        rows = [{"date": v["ds"], "forecast": v["yhat"],
+                 "lower": v["yhat_lower"], "upper": v["yhat_upper"]}
+                for v in run["values"]]
+        df = pd.DataFrame(rows)
+        buf = io.BytesIO()
+        df.to_csv(buf, index=False)
+        buf.seek(0)
+        return send_file(buf, mimetype="text/csv", as_attachment=True,
+                         download_name=f"forecast_{datetime.now(timezone.utc).strftime('%Y%m%d')}.csv")
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=False, port=5000)
