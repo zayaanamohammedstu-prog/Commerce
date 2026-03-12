@@ -36,7 +36,9 @@ _MAX_UPLOAD_BYTES = 10 * 1024 * 1024   # 10 MB
 _INACTIVITY_DAYS  = 30
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
-app.secret_key = os.environ.get("SECRET_KEY", "change-me-in-production-" + uuid.uuid4().hex)
+# SECRET_KEY must be set as an environment variable in production to persist sessions across restarts
+_DEFAULT_SECRET = "commerce-dev-secret-key-change-in-production"
+app.secret_key = os.environ.get("SECRET_KEY", _DEFAULT_SECRET)
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 CORS(app)

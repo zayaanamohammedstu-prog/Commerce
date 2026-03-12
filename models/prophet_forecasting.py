@@ -99,7 +99,6 @@ def forecast_sales_prophet(horizon: int = 30, db_path: str = None) -> List[Dict]
             values = _moving_average_values(df["y"], horizon)
     elif _HAS_STATSMODELS and len(df) >= 14:
         try:
-            from statsmodels.tsa.holtwinters import ExponentialSmoothing
             use_seasonal = len(df) >= 14
             model = ExponentialSmoothing(df["y"], trend="add",
                                          seasonal="add" if use_seasonal else None,
@@ -137,7 +136,6 @@ def forecast_accuracy(db_path: str = None) -> Dict:
     train = df["y"].iloc[:-test_size]
     test = df["y"].iloc[-test_size:]
     try:
-        from statsmodels.tsa.holtwinters import ExponentialSmoothing
         model = ExponentialSmoothing(train, trend="add", seasonal="add", seasonal_periods=7, initialization_method="estimated")
         fit = model.fit(optimized=True, disp=False)
         preds = fit.forecast(test_size)

@@ -31,6 +31,8 @@ def init_platform_db(db_path: str = None) -> None:
 
 
 def get_client_db_path(user_id: int) -> str:
+    if not isinstance(user_id, int) or user_id <= 0:
+        raise ValueError(f"Invalid user_id: {user_id!r}")
     os.makedirs(CLIENTS_DIR, exist_ok=True)
     return os.path.join(CLIENTS_DIR, f"client_{user_id}.db")
 

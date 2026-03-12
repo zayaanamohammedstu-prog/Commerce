@@ -445,7 +445,7 @@ def test_per_client_db_isolation(client):
     """Two approved clients have separate warehouse DBs with independent data."""
     import io
     from datetime import date, timedelta
-    from warehouse.platform_db import get_platform_connection, create_client_db, get_platform_connection
+    from warehouse.platform_db import get_platform_connection, create_client_db
 
     _login_as_admin(client)
 
