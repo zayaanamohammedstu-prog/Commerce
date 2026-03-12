@@ -16,6 +16,8 @@ env/
 
 # Database (generated at runtime)
 data/commerce.db
+data/platform.db
+data/clients/
 
 # Uploaded prediction CSVs (generated at runtime)
 uploads/

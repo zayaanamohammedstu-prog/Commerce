@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Register — Commerce Analytics</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#060a12;color:#dde4f0;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+    a{color:#00d4aa;text-decoration:none}
+    nav{display:flex;align-items:center;justify-content:space-between;padding:1rem 2.5rem;background:#0a0e1c;border-bottom:1px solid rgba(0,212,170,.15)}
+    .nav-brand{font-size:1.2rem;font-weight:700;color:#00d4aa}
+    .nav-links a{color:#dde4f0;font-size:.9rem;margin-left:1.25rem}
+    .nav-links a:hover{color:#00d4aa}
+    .page-center{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem 1rem}
+    .card{background:#0d1626;border:1px solid rgba(0,212,170,.14);border-radius:12px;padding:2.25rem 2rem;width:100%;max-width:440px}
+    .card h1{font-size:1.5rem;font-weight:700;color:#fff;margin-bottom:.5rem;text-align:center}
+    .card .subtitle{text-align:center;font-size:.85rem;color:#8a9bb5;margin-bottom:1.5rem}
+    .form-group{margin-bottom:1.1rem}
+    label{display:block;font-size:.85rem;color:#8a9bb5;margin-bottom:.4rem}
+    input[type="email"],input[type="password"],input[type="text"]{width:100%;background:#0a0e1c;border:1px solid rgba(0,212,170,.2);border-radius:8px;padding:.65rem .9rem;color:#dde4f0;font-size:.95rem;outline:none;transition:border-color .2s}
+    input:focus{border-color:#00d4aa}
+    .notice{background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);border-radius:8px;padding:.75rem 1rem;font-size:.84rem;color:#8a9bb5;margin-bottom:1.25rem}
+    .notice strong{color:#00d4aa}
+    .btn{display:block;width:100%;padding:.7rem;border:none;border-radius:8px;font-size:1rem;font-weight:600;cursor:pointer;margin-top:1.5rem}
+    .btn-primary{background:#00d4aa;color:#060a12}
+    .btn-primary:hover{background:#00bfa0}
+    .alert{padding:.65rem .9rem;border-radius:8px;font-size:.88rem;margin-bottom:1rem}
+    .alert-error,.alert-danger{background:rgba(255,80,80,.12);border:1px solid rgba(255,80,80,.25);color:#ff6b6b}
+    .alert-success{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.25);color:#00d4aa}
+    .footer-link{text-align:center;font-size:.88rem;color:#8a9bb5;margin-top:1.25rem}
+    .footer-link a{color:#00d4aa}
+    footer{text-align:center;padding:1.25rem;font-size:.8rem;color:#4a5568;border-top:1px solid rgba(255,255,255,.05)}
+  </style>
+</head>
+<body>
+  <nav>
+    <a class="nav-brand" href="/">⚡ Commerce Analytics</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/login">Login</a>
+    </div>
+  </nav>
+
+  <div class="page-center">
+    <div class="card">
+      <h1>Create Account</h1>
+      <p class="subtitle">Commerce Analytics — Merchant Portal</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      <div class="notice">
+        <strong>ℹ️ Approval required:</strong> Your account will require admin approval before you can access the dashboard.
+      </div>
+
+      <form method="post">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" placeholder="you@example.com" required autofocus>
+        </div>
+        <div class="form-group">
+          <label for="business_name">Business Name</label>
+          <input type="text" id="business_name" name="business_name" placeholder="Your Store Name" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password <span style="color:#4a5568;font-size:.8em">(min 8 characters)</span></label>
+          <input type="password" id="password" name="password" placeholder="••••••••" required minlength="8">
+        </div>
+        <button type="submit" class="btn btn-primary">Create Account</button>
+      </form>
+
+      <p class="footer-link">Already have an account? <a href="/login">Sign in</a></p>
+    </div>
+  </div>
+
+  <footer>© 2025 Commerce Analytics</footer>
+</body>
+</html>

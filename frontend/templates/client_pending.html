@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Pending Approval — Commerce Analytics</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#060a12;color:#dde4f0;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+    .card{background:#0d1626;border:1px solid rgba(0,212,170,.14);border-radius:12px;padding:2.5rem 2.25rem;max-width:480px;width:100%;margin:1rem;text-align:center}
+    .icon{font-size:3.5rem;margin-bottom:1rem}
+    h1{font-size:1.6rem;font-weight:700;color:#fff;margin-bottom:.75rem}
+    p{color:#8a9bb5;line-height:1.7;margin-bottom:.75rem}
+    .info-box{background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.18);border-radius:8px;padding:.85rem 1rem;margin:1.25rem 0;font-size:.9rem;color:#dde4f0}
+    .info-box span{color:#00d4aa;font-weight:600}
+    a.btn{display:inline-block;padding:.55rem 1.35rem;border-radius:8px;font-size:.9rem;font-weight:600;margin-top:1rem;background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.25);color:#00d4aa;text-decoration:none}
+    a.btn:hover{background:rgba(0,212,170,.2)}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">⏳</div>
+    <h1>Account Pending Approval</h1>
+    <p>Thank you for registering with Commerce Analytics. Your account is currently awaiting review by an administrator.</p>
+    <p>You will be notified once your account has been approved and you can access your dashboard.</p>
+
+    {% if user %}
+    <div class="info-box">
+      {% if user.business_name %}<div><span>Business:</span> {{ user.business_name }}</div>{% endif %}
+      <div><span>Email:</span> {{ user.email }}</div>
+      <div><span>Status:</span> Pending Admin Approval</div>
+    </div>
+    {% endif %}
+
+    <p style="font-size:.85rem">If you have questions, please contact support.</p>
+    <a href="/logout" class="btn">Sign Out</a>
+  </div>
+</body>
+</html>

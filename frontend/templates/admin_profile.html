@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Admin Profile — Commerce Analytics</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#060a12;color:#dde4f0;font-family:'Segoe UI',sans-serif;display:flex;min-height:100vh}
+    a{color:#00d4aa;text-decoration:none}
+    .sidebar{width:220px;min-height:100vh;background:#0a0e1c;border-right:1px solid rgba(0,212,170,.1);display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;top:0;left:0}
+    .sidebar-brand{padding:.25rem 1.5rem 1.5rem;font-size:1.1rem;font-weight:700;color:#00d4aa;border-bottom:1px solid rgba(0,212,170,.1);margin-bottom:1rem}
+    .sidebar nav a{display:flex;align-items:center;gap:.7rem;padding:.65rem 1.5rem;color:#8a9bb5;font-size:.9rem;transition:all .18s}
+    .sidebar nav a:hover,.sidebar nav a.active{color:#00d4aa;background:rgba(0,212,170,.07)}
+    .sidebar-footer{margin-top:auto;padding:1rem 1.5rem;border-top:1px solid rgba(0,212,170,.08)}
+    .sidebar-footer a{color:#8a9bb5;font-size:.85rem}
+    .main{margin-left:220px;flex:1;padding:2rem 2.25rem}
+    .topbar{margin-bottom:2rem}
+    .topbar h1{font-size:1.5rem;font-weight:700;color:#fff}
+    .card{background:#0d1626;border:1px solid rgba(0,212,170,.14);border-radius:12px;padding:2rem;max-width:520px;margin-bottom:1.5rem}
+    .card h3{font-size:1.1rem;font-weight:600;color:#fff;margin-bottom:1.25rem;padding-bottom:.75rem;border-bottom:1px solid rgba(255,255,255,.06)}
+    .info-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid rgba(255,255,255,.04)}
+    .info-row .key{font-size:.85rem;color:#8a9bb5}
+    .info-row .val{font-size:.9rem;color:#dde4f0;font-weight:500}
+    .form-group{margin-bottom:1.1rem}
+    .form-group label{display:block;font-size:.83rem;color:#8a9bb5;margin-bottom:.35rem}
+    .form-group input{width:100%;background:#060a12;border:1px solid rgba(0,212,170,.2);border-radius:8px;padding:.65rem .9rem;color:#dde4f0;font-size:.9rem;outline:none;transition:border-color .2s}
+    .form-group input:focus{border-color:#00d4aa}
+    .hint{font-size:.78rem;color:#4a5568;margin-top:.3rem}
+    .btn{display:inline-block;padding:.65rem 1.5rem;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer}
+    .btn-primary{background:#00d4aa;color:#060a12}
+    .btn-primary:hover{background:#00bfa0}
+    .alert{padding:.65rem .9rem;border-radius:8px;font-size:.88rem;margin-bottom:1rem}
+    .alert-success{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.25);color:#00d4aa}
+    .alert-error,.alert-danger{background:rgba(255,80,80,.1);border:1px solid rgba(255,80,80,.25);color:#ff6b6b}
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="sidebar-brand">🛡️ Admin</div>
+    <nav>
+      <a href="/admin">📊 Dashboard</a>
+      <a href="/admin/users">👥 Users</a>
+      <a href="/admin/analytics">📈 Analytics</a>
+      <a href="/admin/profile" class="active">⚙️ Profile</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="/logout">⬅ Sign Out</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar"><h1>Admin Profile</h1></div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}" style="max-width:520px">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="card">
+      <h3>Account Info</h3>
+      <div class="info-row">
+        <span class="key">Email</span>
+        <span class="val">{{ user.email if user else '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="key">Role</span>
+        <span class="val" style="color:#a78bfa">{{ user.role if user else 'admin' }}</span>
+      </div>
+      <div class="info-row">
+        <span class="key">Business</span>
+        <span class="val">{{ user.business_name if user and user.business_name else '—' }}</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Update Profile</h3>
+      <form method="post">
+        <div class="form-group">
+          <label for="business_name">Business Name</label>
+          <input type="text" id="business_name" name="business_name" value="{{ user.business_name if user and user.business_name else '' }}" placeholder="Your business name">
+        </div>
+        <div class="form-group">
+          <label for="new_password">New Password</label>
+          <input type="password" id="new_password" name="new_password" placeholder="Leave blank to keep current">
+          <div class="hint">Minimum 8 characters. Leave blank to keep your current password.</div>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
