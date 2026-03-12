@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Manage Users</title></head>
+<body>
+<h1>Manage Users</h1>
+<nav><a href="/admin">Dashboard</a> | <a href="/logout">Logout</a></nav>
+<table border="1">
+  <tr><th>ID</th><th>Email</th><th>Role</th><th>Status</th><th>Business</th><th>Actions</th></tr>
+  {% for u in users %}
+  <tr>
+    <td>{{ u.id }}</td><td>{{ u.email }}</td><td>{{ u.role }}</td><td>{{ u.status }}</td><td>{{ u.business_name }}</td>
+    <td>
+      {% if u.status == 'pending' %}<button onclick="approve({{ u.id }})">Approve</button>{% endif %}
+      {% if u.status != 'disabled' and u.id != user.id %}<button onclick="disable({{ u.id }})">Disable</button>{% endif %}
+      {% if u.status == 'disabled' %}<button onclick="enable({{ u.id }})">Enable</button>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+<script>
+async function approve(id) { await fetch('/api/admin/users/'+id+'/approve', {method:'POST'}); location.reload(); }
+async function disable(id) { await fetch('/api/admin/users/'+id+'/disable', {method:'POST'}); location.reload(); }
+async function enable(id)  { await fetch('/api/admin/users/'+id+'/enable',  {method:'POST'}); location.reload(); }
+</script>
+</body>
+</html>

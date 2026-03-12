@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Upload Data</title></head>
+<body>
+<h1>Upload Sales Data</h1>
+<nav><a href="/client">Dashboard</a> | <a href="/logout">Logout</a></nav>
+<form id="uploadForm" enctype="multipart/form-data">
+  <input type="file" name="file" accept=".csv,.xlsx,.xls" required>
+  <button type="submit">Upload</button>
+</form>
+<div id="result"></div>
+<script>
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const formData = new FormData(this);
+  const res = await fetch('/api/client/upload', {method: 'POST', body: formData});
+  const data = await res.json();
+  document.getElementById('result').textContent = JSON.stringify(data);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Admin Dashboard</title></head>
+<body>
+<h1>Admin Dashboard</h1>
+<nav><a href="/admin/users">Users</a> | <a href="/admin/analytics">Analytics</a> | <a href="/admin/profile">Profile</a> | <a href="/logout">Logout</a></nav>
+<ul>
+  <li>Total clients: {{ stats.total_users }}</li>
+  <li>Pending: {{ stats.pending }}</li>
+  <li>Approved: {{ stats.approved }}</li>
+  <li>Disabled: {{ stats.disabled }}</li>
+</ul>
+</body>
+</html>

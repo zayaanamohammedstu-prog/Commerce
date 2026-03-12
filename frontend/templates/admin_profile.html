@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Admin Profile</title></head>
+<body>
+<h1>Admin Profile</h1>
+<nav><a href="/admin">Dashboard</a> | <a href="/logout">Logout</a></nav>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}<p class="{{ category }}">{{ message }}</p>{% endfor %}
+{% endwith %}
+<form method="post">
+  <label>Business Name: <input type="text" name="business_name" value="{{ user.business_name or '' }}"></label><br>
+  <label>New Password (leave blank to keep): <input type="password" name="new_password" minlength="8"></label><br>
+  <button type="submit">Save</button>
+</form>
+</body>
+</html>

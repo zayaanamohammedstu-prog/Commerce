@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Analytics</title></head>
+<body>
+<h1>Analytics</h1>
+<nav><a href="/client">Dashboard</a> | <a href="/logout">Logout</a></nav>
+<div id="kpis"></div>
+<script>
+fetch('/api/client/kpis').then(r=>r.json()).then(d=>{ document.getElementById('kpis').textContent = JSON.stringify(d, null, 2); });
+</script>
+</body>
+</html>

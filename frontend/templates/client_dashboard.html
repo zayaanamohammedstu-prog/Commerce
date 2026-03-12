@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Client Dashboard</title></head>
+<body>
+<h1>Welcome, {{ user.business_name or user.email }}</h1>
+<nav><a href="/client/upload">Upload Data</a> | <a href="/client/analytics">Analytics</a> | <a href="/client/forecast">Forecast</a> | <a href="/client/reports">Reports</a> | <a href="/logout">Logout</a></nav>
+{% if not has_data %}
+<p>No data yet. <a href="/client/upload">Upload a sales file</a> to get started.</p>
+{% else %}
+<p>Your analytics data is ready. <a href="/client/analytics">View Analytics</a></p>
+{% endif %}
+</body>
+</html>

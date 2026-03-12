@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Admin Analytics</title></head>
+<body>
+<h1>Client Analytics Overview</h1>
+<nav><a href="/admin">Dashboard</a> | <a href="/logout">Logout</a></nav>
+<table border="1">
+  <tr><th>ID</th><th>Email</th><th>Business</th><th>Status</th><th>Created</th><th>Last Activity</th></tr>
+  {% for c in clients %}
+  <tr>
+    <td>{{ c.id }}</td><td>{{ c.email }}</td><td>{{ c.business_name }}</td>
+    <td>{{ c.status }}</td><td>{{ c.created_at }}</td><td>{{ c.last_activity_at }}</td>
+  </tr>
+  {% endfor %}
+</table>
+</body>
+</html>

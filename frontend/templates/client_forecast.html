@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Forecast</title></head>
+<body>
+<h1>Sales Forecast</h1>
+<nav><a href="/client">Dashboard</a> | <a href="/logout">Logout</a></nav>
+<div id="forecast"></div>
+<script>
+fetch('/api/client/forecast?horizon=30').then(r=>r.json()).then(d=>{ document.getElementById('forecast').textContent = JSON.stringify(d, null, 2); });
+</script>
+</body>
+</html>
