@@ -1,9 +1,89 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>Reports</title></head>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Reports — Commerce Analytics</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#060a12;color:#dde4f0;font-family:'Segoe UI',sans-serif;display:flex;min-height:100vh}
+    a{color:#00d4aa;text-decoration:none}
+    .sidebar{width:220px;min-height:100vh;background:#0a0e1c;border-right:1px solid rgba(0,212,170,.1);display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;top:0;left:0}
+    .sidebar-brand{padding:.25rem 1.5rem 1.5rem;font-size:1.1rem;font-weight:700;color:#00d4aa;border-bottom:1px solid rgba(0,212,170,.1);margin-bottom:1rem}
+    .sidebar nav a{display:flex;align-items:center;gap:.7rem;padding:.65rem 1.5rem;color:#8a9bb5;font-size:.9rem;transition:all .18s}
+    .sidebar nav a:hover,.sidebar nav a.active{color:#00d4aa;background:rgba(0,212,170,.07)}
+    .sidebar-footer{margin-top:auto;padding:1rem 1.5rem;border-top:1px solid rgba(0,212,170,.08)}
+    .sidebar-footer a{color:#8a9bb5;font-size:.85rem}
+    .main{margin-left:220px;flex:1;padding:2rem 2.25rem}
+    .topbar{margin-bottom:2rem}
+    .topbar h1{font-size:1.5rem;font-weight:700;color:#fff}
+    .card{background:#0d1626;border:1px solid rgba(0,212,170,.14);border-radius:12px;padding:1.75rem;margin-bottom:1.5rem;max-width:680px}
+    .card h3{font-size:1.1rem;font-weight:600;color:#fff;margin-bottom:.75rem}
+    .card p{color:#8a9bb5;font-size:.9rem;line-height:1.65;margin-bottom:.75rem}
+    .card ul{padding-left:1.25rem;color:#8a9bb5;font-size:.9rem;line-height:1.8}
+    .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.5rem;border-radius:8px;font-size:.95rem;font-weight:600;margin-top:.5rem}
+    .btn-primary{background:#00d4aa;color:#060a12}
+    .btn-primary:hover{background:#00bfa0}
+    .kpi-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.85rem;margin-top:1rem}
+    .kpi-item{background:rgba(0,212,170,.05);border:1px solid rgba(0,212,170,.1);border-radius:8px;padding:.8rem 1rem}
+    .kpi-item .label{font-size:.75rem;color:#8a9bb5;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem}
+    .kpi-item .value{font-size:1.2rem;font-weight:700;color:#fff}
+  </style>
+</head>
 <body>
-<h1>Reports</h1>
-<nav><a href="/client">Dashboard</a> | <a href="/logout">Logout</a></nav>
-<a href="/api/client/reports/sales.csv">Download Sales CSV</a>
+  <aside class="sidebar">
+    <div class="sidebar-brand">⚡ Commerce</div>
+    <nav>
+      <a href="/client">📊 Dashboard</a>
+      <a href="/client/upload">📦 Upload</a>
+      <a href="/client/analytics">📈 Analytics</a>
+      <a href="/client/forecast">🔮 Forecast</a>
+      <a href="/client/reports" class="active">📄 Reports</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="/logout">⬅ Sign Out</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar"><h1>Reports</h1></div>
+
+    <div class="card">
+      <h3>📥 Sales Report (CSV)</h3>
+      <p>Download a full export of your sales data in CSV format, ready for analysis in Excel, Google Sheets, or any BI tool.</p>
+      <p><strong style="color:#dde4f0">Includes:</strong></p>
+      <ul>
+        <li>Order dates and transaction IDs</li>
+        <li>Product names, categories, and quantities</li>
+        <li>Revenue and order values</li>
+        <li>Customer identifiers and regions</li>
+      </ul>
+      <a href="/api/client/reports/sales.csv" class="btn btn-primary">⬇ Download Sales Report (CSV)</a>
+    </div>
+
+    <div class="card">
+      <h3>📊 Key Performance Summary</h3>
+      <p>Current snapshot of your business metrics.</p>
+      <div class="kpi-summary" id="kpi-summary">
+        <div style="color:#8a9bb5;font-size:.9rem">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    fetch('/api/client/kpis').then(r=>r.json()).then(d=>{
+      const items = [
+        ['Total Revenue','$'+(d.total_revenue||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2})],
+        ['Total Orders', d.total_orders??'0'],
+        ['Avg Order Value','$'+((d.avg_order_value||0).toFixed(2))],
+        ['Units Sold', d.total_units_sold??'0'],
+        ['Unique Customers', d.unique_customers??'0'],
+        ['Unique Products', d.unique_products??'0'],
+      ];
+      document.getElementById('kpi-summary').innerHTML = items.map(([l,v])=>`
+        <div class="kpi-item"><div class="label">${l}</div><div class="value">${v}</div></div>
+      `).join('');
+    }).catch(()=>{ document.getElementById('kpi-summary').innerHTML='<div style="color:#8a9bb5;font-size:.9rem">Not available.</div>'; });
+  </script>
 </body>
 </html>

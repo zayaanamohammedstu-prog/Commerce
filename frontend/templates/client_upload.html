@@ -1,22 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>Upload Data</title></head>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Upload Data — Commerce Analytics</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#060a12;color:#dde4f0;font-family:'Segoe UI',sans-serif;display:flex;min-height:100vh}
+    a{color:#00d4aa;text-decoration:none}
+    .sidebar{width:220px;min-height:100vh;background:#0a0e1c;border-right:1px solid rgba(0,212,170,.1);display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;top:0;left:0}
+    .sidebar-brand{padding:.25rem 1.5rem 1.5rem;font-size:1.1rem;font-weight:700;color:#00d4aa;border-bottom:1px solid rgba(0,212,170,.1);margin-bottom:1rem}
+    .sidebar nav a{display:flex;align-items:center;gap:.7rem;padding:.65rem 1.5rem;color:#8a9bb5;font-size:.9rem;transition:all .18s}
+    .sidebar nav a:hover,.sidebar nav a.active{color:#00d4aa;background:rgba(0,212,170,.07)}
+    .sidebar-footer{margin-top:auto;padding:1rem 1.5rem;border-top:1px solid rgba(0,212,170,.08)}
+    .sidebar-footer a{color:#8a9bb5;font-size:.85rem}
+    .main{margin-left:220px;flex:1;padding:2rem 2.25rem}
+    .topbar{margin-bottom:2rem}
+    .topbar h1{font-size:1.5rem;font-weight:700;color:#fff}
+    .topbar p{color:#8a9bb5;font-size:.9rem;margin-top:.3rem}
+    .card{background:#0d1626;border:1px solid rgba(0,212,170,.14);border-radius:12px;padding:2rem;max-width:560px}
+    .drop-zone{border:2px dashed rgba(0,212,170,.3);border-radius:10px;padding:2.5rem;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:1.5rem}
+    .drop-zone:hover,.drop-zone.dragover{border-color:#00d4aa;background:rgba(0,212,170,.05)}
+    .drop-zone .icon{font-size:2.5rem;margin-bottom:.75rem}
+    .drop-zone p{color:#8a9bb5;font-size:.9rem}
+    .drop-zone .hint{font-size:.8rem;color:#4a5568;margin-top:.35rem}
+    input[type="file"]{display:none}
+    .file-selected{background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.2);border-radius:8px;padding:.7rem 1rem;font-size:.88rem;color:#00d4aa;margin-bottom:1.25rem;display:none}
+    .btn{display:inline-block;padding:.65rem 1.6rem;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer}
+    .btn-primary{background:#00d4aa;color:#060a12}
+    .btn-primary:hover{background:#00bfa0}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .status{margin-top:1.25rem;padding:.85rem 1rem;border-radius:8px;font-size:.9rem;display:none}
+    .status.loading{background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.15);color:#8a9bb5}
+    .status.success{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.25);color:#00d4aa}
+    .status.error{background:rgba(255,80,80,.1);border:1px solid rgba(255,80,80,.25);color:#ff6b6b}
+    .results-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:.75rem}
+    .results-table th{color:#8a9bb5;text-align:left;padding:.4rem .6rem;border-bottom:1px solid rgba(255,255,255,.07)}
+    .results-table td{padding:.4rem .6rem;color:#dde4f0}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,212,170,.3);border-top-color:#00d4aa;border-radius:50%;animation:spin .7s linear infinite;margin-right:.5rem;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .requirements{margin-top:1.5rem;font-size:.83rem;color:#4a5568}
+    .requirements ul{padding-left:1.2rem;margin-top:.4rem}
+    .requirements li{margin-bottom:.25rem}
+  </style>
+</head>
 <body>
-<h1>Upload Sales Data</h1>
-<nav><a href="/client">Dashboard</a> | <a href="/logout">Logout</a></nav>
-<form id="uploadForm" enctype="multipart/form-data">
-  <input type="file" name="file" accept=".csv,.xlsx,.xls" required>
-  <button type="submit">Upload</button>
-</form>
-<div id="result"></div>
-<script>
-document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-  e.preventDefault();
-  const formData = new FormData(this);
-  const res = await fetch('/api/client/upload', {method: 'POST', body: formData});
-  const data = await res.json();
-  document.getElementById('result').textContent = JSON.stringify(data);
-});
-</script>
+  <aside class="sidebar">
+    <div class="sidebar-brand">⚡ Commerce</div>
+    <nav>
+      <a href="/client">📊 Dashboard</a>
+      <a href="/client/upload" class="active">📦 Upload</a>
+      <a href="/client/analytics">📈 Analytics</a>
+      <a href="/client/forecast">🔮 Forecast</a>
+      <a href="/client/reports">📄 Reports</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="/logout">⬅ Sign Out</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>Upload Sales Data</h1>
+      <p>Import your CSV or Excel file to populate your analytics dashboard.</p>
+    </div>
+
+    <div class="card">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="icon">📂</div>
+        <p>Drop your file here or <strong style="color:#00d4aa">browse</strong></p>
+        <div class="hint">Supports .csv, .xlsx, .xls — max 10 MB</div>
+      </div>
+      <input type="file" id="file-input" accept=".csv,.xlsx,.xls">
+      <div class="file-selected" id="file-selected">📄 <span id="file-name"></span></div>
+      <button class="btn btn-primary" id="upload-btn" disabled onclick="uploadFile()">Upload &amp; Process</button>
+
+      <div class="status" id="status"></div>
+
+      <div class="requirements">
+        <strong style="color:#8a9bb5">Required columns:</strong>
+        <ul>
+          <li>date / order_date</li>
+          <li>revenue / total_amount / sales</li>
+          <li>product / product_name (optional)</li>
+          <li>region (optional)</li>
+          <li>category (optional)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const fileSelected = document.getElementById('file-selected');
+    const fileName = document.getElementById('file-name');
+    const uploadBtn = document.getElementById('upload-btn');
+    const status = document.getElementById('status');
+
+    fileInput.addEventListener('change', () => selectFile(fileInput.files[0]));
+
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
+    });
+
+    function selectFile(file) {
+      if (!file) return;
+      fileName.textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
+      fileSelected.style.display = 'block';
+      uploadBtn.disabled = false;
+    }
+
+    function uploadFile() {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const fd = new FormData();
+      fd.append('file', file);
+      uploadBtn.disabled = true;
+      showStatus('loading', '<span class="spinner"></span>Processing your file…');
+
+      fetch('/api/client/upload', { method: 'POST', body: fd })
+        .then(r => r.json().then(d => ({ ok: r.ok, data: d })))
+        .then(({ ok, data }) => {
+          if (ok) {
+            let html = '✅ Upload successful!';
+            if (data.rows_loaded != null) html += '<br>Rows loaded: <strong>' + data.rows_loaded + '</strong>';
+            if (data.message) html += '<br>' + data.message;
+            showStatus('success', html);
+            uploadBtn.disabled = false;
+          } else {
+            showStatus('error', '❌ ' + (data.error || data.message || 'Upload failed'));
+            uploadBtn.disabled = false;
+          }
+        })
+        .catch(() => { showStatus('error', '❌ Network error. Please try again.'); uploadBtn.disabled = false; });
+    }
+
+    function showStatus(type, html) {
+      status.className = 'status ' + type;
+      status.innerHTML = html;
+      status.style.display = 'block';
+    }
+  </script>
 </body>
 </html>

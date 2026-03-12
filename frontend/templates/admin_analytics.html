@@ -1,17 +1,81 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>Admin Analytics</title></head>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Platform Analytics — Commerce Analytics</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#060a12;color:#dde4f0;font-family:'Segoe UI',sans-serif;display:flex;min-height:100vh}
+    a{color:#00d4aa;text-decoration:none}
+    .sidebar{width:220px;min-height:100vh;background:#0a0e1c;border-right:1px solid rgba(0,212,170,.1);display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;top:0;left:0}
+    .sidebar-brand{padding:.25rem 1.5rem 1.5rem;font-size:1.1rem;font-weight:700;color:#00d4aa;border-bottom:1px solid rgba(0,212,170,.1);margin-bottom:1rem}
+    .sidebar nav a{display:flex;align-items:center;gap:.7rem;padding:.65rem 1.5rem;color:#8a9bb5;font-size:.9rem;transition:all .18s}
+    .sidebar nav a:hover,.sidebar nav a.active{color:#00d4aa;background:rgba(0,212,170,.07)}
+    .sidebar-footer{margin-top:auto;padding:1rem 1.5rem;border-top:1px solid rgba(0,212,170,.08)}
+    .sidebar-footer a{color:#8a9bb5;font-size:.85rem}
+    .main{margin-left:220px;flex:1;padding:2rem 2.25rem}
+    .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem}
+    .topbar h1{font-size:1.5rem;font-weight:700;color:#fff}
+    .summary-badge{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.2);border-radius:20px;padding:.3rem .9rem;font-size:.85rem;color:#00d4aa}
+    .card{background:#0d1626;border:1px solid rgba(0,212,170,.14);border-radius:12px;padding:1.5rem;overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:.87rem;min-width:600px}
+    th{color:#8a9bb5;text-transform:uppercase;font-size:.72rem;letter-spacing:.07em;padding:.6rem .9rem;border-bottom:1px solid rgba(255,255,255,.07);text-align:left;white-space:nowrap}
+    td{padding:.75rem .9rem;border-bottom:1px solid rgba(255,255,255,.04)}
+    tr:hover td{background:rgba(0,212,170,.03)}
+    .badge{display:inline-block;padding:.2rem .55rem;border-radius:5px;font-size:.75rem;font-weight:600}
+    .badge-approved{background:rgba(0,212,170,.12);color:#00d4aa}
+    .badge-pending{background:rgba(245,158,11,.12);color:#f59e0b}
+    .badge-disabled{background:rgba(255,80,80,.1);color:#ff6b6b}
+    .no-data{text-align:center;color:#8a9bb5;padding:2rem;font-size:.9rem}
+  </style>
+</head>
 <body>
-<h1>Client Analytics Overview</h1>
-<nav><a href="/admin">Dashboard</a> | <a href="/logout">Logout</a></nav>
-<table border="1">
-  <tr><th>ID</th><th>Email</th><th>Business</th><th>Status</th><th>Created</th><th>Last Activity</th></tr>
-  {% for c in clients %}
-  <tr>
-    <td>{{ c.id }}</td><td>{{ c.email }}</td><td>{{ c.business_name }}</td>
-    <td>{{ c.status }}</td><td>{{ c.created_at }}</td><td>{{ c.last_activity_at }}</td>
-  </tr>
-  {% endfor %}
-</table>
+  <aside class="sidebar">
+    <div class="sidebar-brand">🛡️ Admin</div>
+    <nav>
+      <a href="/admin">📊 Dashboard</a>
+      <a href="/admin/users">👥 Users</a>
+      <a href="/admin/analytics" class="active">📈 Analytics</a>
+      <a href="/admin/profile">⚙️ Profile</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="/logout">⬅ Sign Out</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h1>Platform Analytics</h1>
+      <span class="summary-badge">{{ clients|length if clients else 0 }} client{{ 's' if not clients or clients|length != 1 }}</span>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Business Name</th>
+            <th>Status</th>
+            <th>Registered</th>
+            <th>Last Active</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in clients %}
+          <tr>
+            <td>{{ c.email }}</td>
+            <td>{{ c.business_name or '—' }}</td>
+            <td><span class="badge badge-{{ c.status }}">{{ c.status }}</span></td>
+            <td style="font-size:.82rem;color:#8a9bb5">{{ c.created_at or '—' }}</td>
+            <td style="font-size:.82rem;color:#8a9bb5">{{ c.last_active or '—' }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="no-data">No clients registered yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 </body>
 </html>

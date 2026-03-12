@@ -1,12 +1,157 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><title>Analytics</title></head>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Analytics — Commerce Analytics</title>
+  <script src="/static/js/vendor/chart.umd.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#060a12;color:#dde4f0;font-family:'Segoe UI',sans-serif;display:flex;min-height:100vh}
+    a{color:#00d4aa;text-decoration:none}
+    .sidebar{width:220px;min-height:100vh;background:#0a0e1c;border-right:1px solid rgba(0,212,170,.1);display:flex;flex-direction:column;padding:1.5rem 0;position:fixed;top:0;left:0}
+    .sidebar-brand{padding:.25rem 1.5rem 1.5rem;font-size:1.1rem;font-weight:700;color:#00d4aa;border-bottom:1px solid rgba(0,212,170,.1);margin-bottom:1rem}
+    .sidebar nav a{display:flex;align-items:center;gap:.7rem;padding:.65rem 1.5rem;color:#8a9bb5;font-size:.9rem;transition:all .18s}
+    .sidebar nav a:hover,.sidebar nav a.active{color:#00d4aa;background:rgba(0,212,170,.07)}
+    .sidebar-footer{margin-top:auto;padding:1rem 1.5rem;border-top:1px solid rgba(0,212,170,.08)}
+    .sidebar-footer a{color:#8a9bb5;font-size:.85rem}
+    .main{margin-left:220px;flex:1;padding:2rem 2.25rem}
+    .topbar{margin-bottom:2rem}
+    .topbar h1{font-size:1.5rem;font-weight:700;color:#fff}
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-bottom:2rem}
+    .kpi-card{background:#0d1626;border:1px solid rgba(0,212,170,.14);border-radius:12px;padding:1.2rem 1.3rem}
+    .kpi-card .label{font-size:.75rem;color:#8a9bb5;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.35rem}
+    .kpi-card .value{font-size:1.55rem;font-weight:700;color:#fff}
+    .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:1.5rem}
+    .chart-card{background:#0d1626;border:1px solid rgba(0,212,170,.14);border-radius:12px;padding:1.5rem}
+    .chart-card h3{font-size:1rem;font-weight:600;color:#fff;margin-bottom:1rem}
+    .chart-card.full{grid-column:1/-1}
+    canvas{max-width:100%}
+    .toggle-row{display:flex;gap:.5rem;margin-bottom:1rem}
+    .toggle-btn{padding:.3rem .8rem;border-radius:6px;border:1px solid rgba(0,212,170,.2);background:transparent;color:#8a9bb5;font-size:.8rem;cursor:pointer}
+    .toggle-btn.active{background:rgba(0,212,170,.15);color:#00d4aa;border-color:#00d4aa}
+  </style>
+</head>
 <body>
-<h1>Analytics</h1>
-<nav><a href="/client">Dashboard</a> | <a href="/logout">Logout</a></nav>
-<div id="kpis"></div>
-<script>
-fetch('/api/client/kpis').then(r=>r.json()).then(d=>{ document.getElementById('kpis').textContent = JSON.stringify(d, null, 2); });
-</script>
+  <aside class="sidebar">
+    <div class="sidebar-brand">⚡ Commerce</div>
+    <nav>
+      <a href="/client">📊 Dashboard</a>
+      <a href="/client/upload">📦 Upload</a>
+      <a href="/client/analytics" class="active">📈 Analytics</a>
+      <a href="/client/forecast">🔮 Forecast</a>
+      <a href="/client/reports">📄 Reports</a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="/logout">⬅ Sign Out</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar"><h1>Analytics</h1></div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="label">Total Revenue</div><div class="value" id="kpi-revenue">—</div></div>
+      <div class="kpi-card"><div class="label">Total Orders</div><div class="value" id="kpi-orders">—</div></div>
+      <div class="kpi-card"><div class="label">Avg Order Value</div><div class="value" id="kpi-aov">—</div></div>
+      <div class="kpi-card"><div class="label">Units Sold</div><div class="value" id="kpi-units">—</div></div>
+      <div class="kpi-card"><div class="label">Customers</div><div class="value" id="kpi-customers">—</div></div>
+      <div class="kpi-card"><div class="label">Products</div><div class="value" id="kpi-products">—</div></div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <h3>Sales Trend</h3>
+        <div class="toggle-row">
+          <button class="toggle-btn" onclick="loadTimeseries('daily', this)">Daily</button>
+          <button class="toggle-btn active" onclick="loadTimeseries('weekly', this)">Weekly</button>
+          <button class="toggle-btn" onclick="loadTimeseries('monthly', this)">Monthly</button>
+        </div>
+        <canvas id="trend-chart" height="80"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Top Products by Revenue</h3>
+        <canvas id="products-chart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Sales by Category</h3>
+        <canvas id="category-chart"></canvas>
+      </div>
+      <div class="chart-card full">
+        <h3>Sales by Region</h3>
+        <canvas id="region-chart" height="60"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const CHART_DEFAULTS = {
+      color: '#8a9bb5',
+      primary: '#00d4aa',
+      grid: 'rgba(255,255,255,.06)',
+      bg: 'rgba(0,212,170,.12)',
+    };
+
+    // KPIs
+    fetch('/api/client/kpis').then(r=>r.json()).then(d=>{
+      document.getElementById('kpi-revenue').textContent = '$'+(d.total_revenue||0).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+      document.getElementById('kpi-orders').textContent = d.total_orders??'0';
+      document.getElementById('kpi-aov').textContent = '$'+((d.avg_order_value||0).toFixed(2));
+      document.getElementById('kpi-units').textContent = d.total_units_sold??'0';
+      document.getElementById('kpi-customers').textContent = d.unique_customers??'0';
+      document.getElementById('kpi-products').textContent = d.unique_products??'0';
+    }).catch(()=>{});
+
+    let trendChart = null;
+    function loadTimeseries(granularity, btn) {
+      document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.remove('active'));
+      if(btn) btn.classList.add('active');
+      fetch('/api/client/sales/timeseries?granularity='+granularity).then(r=>r.json()).then(data=>{
+        const labels = data.map(d=>d.date||d.period||d.week||d.month||d.label||'');
+        const values = data.map(d=>d.revenue||d.total_revenue||d.value||0);
+        if(trendChart) trendChart.destroy();
+        trendChart = new Chart(document.getElementById('trend-chart'), {
+          type:'line',
+          data:{labels,datasets:[{label:'Revenue',data:values,borderColor:CHART_DEFAULTS.primary,backgroundColor:CHART_DEFAULTS.bg,tension:.35,fill:true,pointRadius:2}]},
+          options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:CHART_DEFAULTS.color,maxTicksLimit:12},grid:{color:CHART_DEFAULTS.grid}},y:{ticks:{color:CHART_DEFAULTS.color},grid:{color:CHART_DEFAULTS.grid}}}}
+        });
+      }).catch(()=>{});
+    }
+    loadTimeseries('weekly', null);
+
+    // Top Products
+    fetch('/api/client/products/top?limit=10').then(r=>r.json()).then(data=>{
+      const labels = data.map(d=>d.product||d.name||d.product_name||'?');
+      const values = data.map(d=>d.revenue||d.total_revenue||0);
+      new Chart(document.getElementById('products-chart'), {
+        type:'bar',
+        data:{labels,datasets:[{label:'Revenue',data:values,backgroundColor:'rgba(0,212,170,.55)',borderColor:'#00d4aa',borderWidth:1}]},
+        options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:CHART_DEFAULTS.color},grid:{color:CHART_DEFAULTS.grid}},y:{ticks:{color:CHART_DEFAULTS.color}}}}
+      });
+    }).catch(()=>{});
+
+    // Category
+    fetch('/api/client/sales/category').then(r=>r.json()).then(data=>{
+      const labels = data.map(d=>d.category||d.name||'?');
+      const values = data.map(d=>d.revenue||d.total_revenue||0);
+      const colors = ['#00d4aa','#ff6b35','#7c3aed','#f59e0b','#10b981','#3b82f6','#ec4899','#64748b'];
+      new Chart(document.getElementById('category-chart'), {
+        type:'doughnut',
+        data:{labels,datasets:[{data:values,backgroundColor:colors.slice(0,labels.length),borderWidth:0}]},
+        options:{responsive:true,plugins:{legend:{labels:{color:CHART_DEFAULTS.color}}}}
+      });
+    }).catch(()=>{});
+
+    // Region
+    fetch('/api/client/sales/region').then(r=>r.json()).then(data=>{
+      const labels = data.map(d=>d.region||d.name||'?');
+      const values = data.map(d=>d.revenue||d.total_revenue||0);
+      new Chart(document.getElementById('region-chart'), {
+        type:'bar',
+        data:{labels,datasets:[{label:'Revenue',data:values,backgroundColor:'rgba(124,58,237,.6)',borderColor:'#7c3aed',borderWidth:1}]},
+        options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:CHART_DEFAULTS.color},grid:{color:CHART_DEFAULTS.grid}},y:{ticks:{color:CHART_DEFAULTS.color},grid:{color:CHART_DEFAULTS.grid}}}}
+      });
+    }).catch(()=>{});
+  </script>
 </body>
 </html>
