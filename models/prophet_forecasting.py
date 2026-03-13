@@ -47,8 +47,8 @@ def _moving_average_values(series: pd.Series, horizon: int) -> List[float]:
     return [round(max(0.0, level), 2)] * horizon
 
 
-def _prophet_forecast(df: pd.DataFrame, horizon: int) -> tuple[List[float], dict]:
-    """Run Prophet and return (values, accuracy_metrics)."""
+def _prophet_forecast(df: pd.DataFrame, horizon: int) -> tuple[List[float], dict, List[float], List[float]]:
+    """Run Prophet and return (values, accuracy_metrics, lower, upper)."""
     if len(df) < 14:
         raise ValueError("Not enough data for Prophet (need >= 14 days)")
 
@@ -58,7 +58,8 @@ def _prophet_forecast(df: pd.DataFrame, horizon: int) -> tuple[List[float], dict
     train_df = df.iloc[:-test_size].copy()
     test_df = df.iloc[-test_size:].copy()
 
-    model = Prophet(daily_seasonality=False, weekly_seasonality=True, yearly_seasonality=(n >= 365))
+    model = Prophet(daily_seasonality=False, weekly_seasonality=True, yearly_seasonality=(n >= 365),
+                    interval_width=0.80)
     model.fit(train_df)
 
     # Accuracy on holdout
@@ -69,35 +70,50 @@ def _prophet_forecast(df: pd.DataFrame, horizon: int) -> tuple[List[float], dict
 
     mae = float(np.mean(np.abs(test_actual - test_pred)))
     rmse = float(np.sqrt(np.mean((test_actual - test_pred) ** 2)))
-    mean_actual = float(np.mean(np.abs(test_actual)))
     mape = float(np.mean(np.abs((test_actual - test_pred) / (test_actual + 1e-8))) * 100)
 
     # Full model for forecast
-    full_model = Prophet(daily_seasonality=False, weekly_seasonality=True, yearly_seasonality=(n >= 365))
+    full_model = Prophet(daily_seasonality=False, weekly_seasonality=True, yearly_seasonality=(n >= 365),
+                         interval_width=0.80)
     full_model.fit(df)
     future = full_model.make_future_dataframe(periods=horizon)
     forecast = full_model.predict(future)
-    values = [max(0.0, round(v, 2)) for v in forecast.iloc[-horizon:]["yhat"].values]
+    tail = forecast.iloc[-horizon:]
+    values = [max(0.0, round(v, 2)) for v in tail["yhat"].values]
+    lower  = [max(0.0, round(v, 2)) for v in tail["yhat_lower"].values]
+    upper  = [round(v, 2) for v in tail["yhat_upper"].values]
 
     accuracy = {"mae": round(mae, 2), "rmse": round(rmse, 2), "mape": round(mape, 2), "test_days": test_size}
-    return values, accuracy
+    return values, accuracy, lower, upper
 
 
 def forecast_sales_prophet(horizon: int = 30, db_path: str = None) -> List[Dict]:
-    """Forecast daily revenue for the next horizon days."""
+    """Forecast daily revenue for the next horizon days with confidence intervals."""
     df = _load_daily_sales(db_path)
     if df.empty:
         last_date = date.today()
-        return [{"date": (last_date + timedelta(days=i+1)).isoformat(), "forecast": 0.0} for i in range(horizon)]
+        return [{"date": (last_date + timedelta(days=i+1)).isoformat(), "forecast": 0.0,
+                 "yhat_lower": 0.0, "yhat_upper": 0.0} for i in range(horizon)]
 
     last_date = df["ds"].iloc[-1].date()
+    algorithm = "Moving Average"
+    error_msg = None
 
     if _HAS_PROPHET and len(df) >= 14:
         try:
-            values, _ = _prophet_forecast(df, horizon)
-        except Exception:
-            values = _moving_average_values(df["y"], horizon)
-    elif _HAS_STATSMODELS and len(df) >= 14:
+            values, _, lower, upper = _prophet_forecast(df, horizon)
+            algorithm = "Prophet"
+        except Exception as exc:
+            error_msg = f"Prophet failed: {exc}"
+            values, lower, upper = None, None, None
+    else:
+        values, lower, upper = None, None, None
+        if not _HAS_PROPHET:
+            error_msg = "Prophet not installed."
+        elif len(df) < 14:
+            error_msg = "Insufficient data for Prophet (need >= 14 days)."
+
+    if values is None and _HAS_STATSMODELS and len(df) >= 14:
         try:
             use_seasonal = len(df) >= 14
             model = ExponentialSmoothing(df["y"], trend="add",
@@ -107,13 +123,33 @@ def forecast_sales_prophet(horizon: int = 30, db_path: str = None) -> List[Dict]
             fit = model.fit(optimized=True, disp=False)
             raw = fit.forecast(horizon)
             values = [max(0.0, round(v, 2)) for v in raw]
-        except Exception:
-            values = _moving_average_values(df["y"], horizon)
-    else:
-        values = _moving_average_values(df["y"], horizon)
+            # Simple 15% band for Holt-Winters
+            lower = [max(0.0, round(v * 0.85, 2)) for v in values]
+            upper = [round(v * 1.15, 2) for v in values]
+            algorithm = "Holt-Winters"
+        except Exception as exc:
+            error_msg = (error_msg or "") + f" Holt-Winters failed: {exc}"
+            values, lower, upper = None, None, None
 
-    return [{"date": (last_date + timedelta(days=i+1)).isoformat(), "forecast": val}
-            for i, val in enumerate(values)]
+    if values is None:
+        values = _moving_average_values(df["y"], horizon)
+        level  = values[0] if values else 0.0
+        lower  = [max(0.0, round(level * 0.85, 2))] * horizon
+        upper  = [round(level * 1.15, 2)] * horizon
+
+    results = [
+        {
+            "date":       (last_date + timedelta(days=i+1)).isoformat(),
+            "forecast":   val,
+            "yhat_lower": lower[i],
+            "yhat_upper": upper[i],
+        }
+        for i, val in enumerate(values)
+    ]
+    if error_msg:
+        import logging
+        logging.getLogger(__name__).warning("forecast_sales_prophet: %s", error_msg)
+    return results
 
 
 def forecast_accuracy(db_path: str = None) -> Dict:
@@ -124,7 +160,7 @@ def forecast_accuracy(db_path: str = None) -> Dict:
 
     if _HAS_PROPHET and len(df) >= 14:
         try:
-            _, accuracy = _prophet_forecast(df, 7)
+            _, accuracy, _, _ = _prophet_forecast(df, 7)
             accuracy["algorithm"] = "Prophet"
             accuracy["status"] = "ok"
             return accuracy

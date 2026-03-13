@@ -677,29 +677,39 @@ def api_client_customers():
 @client_required
 def api_client_forecast():
     try:
-        from models.prophet_forecasting import forecast_sales_prophet, get_forecast_summary
+        import json as _json
+        from models.ensemble_forecasting import ensemble_forecast
         from models.forecasting import persist_forecast
+        from models.data_quality import score_from_db
         horizon = min(int(request.args.get("horizon", 30)), 90)
         user = _get_current_user()
         db_path = _get_client_db(user["id"])
-        results = forecast_sales_prophet(horizon=horizon, db_path=db_path)
+        result = ensemble_forecast(horizon=horizon, db_path=db_path)
+
+        dq_score = score_from_db(db_path)
 
         # Persist the forecast run + values
         try:
-            summary = get_forecast_summary(db_path=db_path)
             run_meta = {
-                "algorithm": summary.get("algorithm", "Unknown"),
-                "horizon": horizon,
-                "training_start": summary.get("training_start"),
-                "training_end": summary.get("training_end"),
-                "training_days": summary.get("training_days"),
+                "algorithm":          result.get("algorithm", "Ensemble"),
+                "horizon":            horizon,
+                "mae":                result.get("mae"),
+                "rmse":               result.get("rmse"),
+                "mape":               result.get("mape"),
+                "training_start":     result.get("training_start"),
+                "training_end":       result.get("training_end"),
+                "training_days":      result.get("training_days"),
+                "weights_json":       _json.dumps(result.get("weights", {})),
+                "error_msg":          "; ".join(result.get("errors", [])) or None,
+                "data_quality_score": dq_score,
             }
-            persist_forecast(db_path, run_meta, results)
+            persist_forecast(db_path, run_meta, result["forecast"])
         except Exception as persist_err:
             app.logger.warning("Forecast persistence failed: %s", persist_err)
 
-        return jsonify(results)
+        return jsonify(result)
     except Exception as e:
+        app.logger.exception("Forecast endpoint error")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/client/forecast/summary")
@@ -718,13 +728,167 @@ def api_client_forecast_summary():
 @client_required
 def api_client_forecast_accuracy():
     try:
-        from models.prophet_forecasting import forecast_accuracy
+        from models.ensemble_forecasting import ensemble_forecast
         user = _get_current_user()
         db_path = _get_client_db(user["id"])
-        accuracy = forecast_accuracy(db_path=db_path)
-        return jsonify(accuracy)
+        result = ensemble_forecast(horizon=7, db_path=db_path)
+        return jsonify({
+            "status":    "ok",
+            "algorithm": result.get("algorithm", "Ensemble"),
+            "mae":       result.get("mae"),
+            "rmse":      result.get("rmse"),
+            "mape":      result.get("mape"),
+            "weights":   result.get("weights", {}),
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/api/client/forecast/anomalies")
+@client_required
+def api_client_forecast_anomalies():
+    try:
+        from models.anomaly import run_anomaly_detection
+        user = _get_current_user()
+        db_path = _get_client_db(user["id"])
+        result = run_anomaly_detection(db_path)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/client/forecast/whatif", methods=["POST"])
+@client_required
+def api_client_forecast_whatif():
+    try:
+        from models.ensemble_forecasting import ensemble_forecast
+        from models.whatif import run_whatif
+        data = request.get_json(silent=True) or {}
+        scenario = data.get("scenario", {})
+        horizon  = min(int(data.get("horizon", 30)), 90)
+        user     = _get_current_user()
+        db_path  = _get_client_db(user["id"])
+        base     = ensemble_forecast(horizon=horizon, db_path=db_path)
+        corridor = run_whatif(base["forecast"], scenario)
+        return jsonify({
+            "scenario":  scenario,
+            "horizon":   horizon,
+            "corridor":  corridor,
+        })
+    except Exception as e:
+        app.logger.exception("What-if endpoint error")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/client/insights")
+@client_required
+def api_client_insights():
+    try:
+        from models.ensemble_forecasting import ensemble_forecast
+        from models.anomaly import run_anomaly_detection
+        from models.data_quality import score_from_db
+        user    = _get_current_user()
+        db_path = _get_client_db(user["id"])
+
+        forecast_result = ensemble_forecast(horizon=30, db_path=db_path)
+        anomaly_result  = run_anomaly_detection(db_path)
+        dq_score        = score_from_db(db_path)
+
+        insights = _generate_insights(forecast_result, anomaly_result, dq_score, db_path)
+        return jsonify({"insights": insights, "data_quality_score": dq_score})
+    except Exception as e:
+        app.logger.exception("Insights endpoint error")
+        return jsonify({"error": str(e)}), 500
+
+
+def _generate_insights(forecast_result: dict, anomaly_result: dict, dq_score: float, db_path: str) -> list:
+    """Generate plain-language insights from forecast, anomaly, and KPI data."""
+    insights = []
+    confidence = "high" if dq_score >= 70 else ("medium" if dq_score >= 40 else "low")
+
+    # --- Forecast trend insight ---
+    forecast = forecast_result.get("forecast", [])
+    if len(forecast) >= 14:
+        first_week  = sum(d["yhat"] for d in forecast[:7])
+        second_week = sum(d["yhat"] for d in forecast[7:14])
+        if first_week > 0:
+            pct = (second_week - first_week) / first_week * 100
+            direction = "increase" if pct > 0 else "decrease"
+            if abs(pct) > 2:
+                insights.append({
+                    "type":       "forecast_trend",
+                    "confidence": confidence,
+                    "message":    (
+                        f"Revenue is forecast to {direction} by {abs(pct):.1f}% "
+                        f"in week 2 vs week 1 of the forecast period."
+                    ),
+                })
+
+    # --- Anomaly insight ---
+    anomalies = anomaly_result.get("anomalies", [])
+    if anomalies:
+        recent = sorted(anomalies, key=lambda x: x.get("date", ""), reverse=True)[:3]
+        for a in recent:
+            insights.append({
+                "type":       "anomaly",
+                "confidence": confidence,
+                "message":    f"Anomaly detected on {a['date']}: {a['description']}",
+            })
+
+    # --- Accuracy insight ---
+    mae = forecast_result.get("mae")
+    if mae is not None:
+        insights.append({
+            "type":       "accuracy",
+            "confidence": confidence,
+            "message":    (
+                f"Ensemble forecast model achieved MAE={mae:.2f} on holdout data. "
+                f"Component weights: "
+                + ", ".join(
+                    f"{k}={v:.0%}"
+                    for k, v in forecast_result.get("weights", {}).items()
+                    if v > 0
+                ) + "."
+            ),
+        })
+
+    # --- Data quality insight ---
+    if dq_score < 70:
+        insights.append({
+            "type":       "data_quality",
+            "confidence": "low",
+            "message":    (
+                f"Data quality score is {dq_score:.0f}/100. "
+                "Forecast confidence may be reduced. "
+                "Consider uploading cleaner or more complete data."
+            ),
+        })
+    else:
+        insights.append({
+            "type":       "data_quality",
+            "confidence": "high",
+            "message":    f"Data quality score: {dq_score:.0f}/100 — good quality data.",
+        })
+
+    # --- KPI-based insight ---
+    try:
+        conn = _get_db(db_path)
+        row = conn.execute(
+            "SELECT SUM(total_amount) AS rev, COUNT(DISTINCT date_id) AS days "
+            "FROM fact_sales"
+        ).fetchone()
+        conn.close()
+        if row and row["days"] and row["rev"]:
+            avg_daily = row["rev"] / row["days"]
+            insights.append({
+                "type":       "kpi",
+                "confidence": confidence,
+                "message":    (
+                    f"Average daily revenue across {row['days']} trading days: "
+                    f"${avg_daily:,.2f}."
+                ),
+            })
+    except Exception:
+        pass
+
+    return insights
 
 # ---------------------------------------------------------------------------
 # Client API: reports (CSV export)

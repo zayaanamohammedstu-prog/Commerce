@@ -196,8 +196,9 @@ def persist_forecast(db_path: str, run_meta: Dict, forecast_rows: List[Dict]) ->
     conn = get_connection(db_path)
     cur = conn.execute(
         """INSERT INTO forecast_runs
-               (algorithm, horizon, mae, rmse, mape, training_start, training_end, training_days)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+               (algorithm, horizon, mae, rmse, mape, training_start, training_end,
+                training_days, weights_json, error_msg, data_quality_score)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (
             run_meta.get("algorithm"),
             run_meta.get("horizon"),
@@ -207,13 +208,19 @@ def persist_forecast(db_path: str, run_meta: Dict, forecast_rows: List[Dict]) ->
             run_meta.get("training_start"),
             run_meta.get("training_end"),
             run_meta.get("training_days"),
+            run_meta.get("weights_json"),
+            run_meta.get("error_msg"),
+            run_meta.get("data_quality_score"),
         ),
     )
     run_id = cur.lastrowid
     conn.executemany(
         "INSERT INTO forecast_values (run_id, ds, yhat, yhat_lower, yhat_upper) VALUES (?, ?, ?, ?, ?)",
         [
-            (run_id, row["date"], row["forecast"], row.get("lower"), row.get("upper"))
+            (run_id, row.get("date") or row.get("ds"),
+             row.get("yhat") or row.get("forecast"),
+             row.get("yhat_lower") or row.get("lower"),
+             row.get("yhat_upper") or row.get("upper"))
             for row in forecast_rows
         ],
     )
