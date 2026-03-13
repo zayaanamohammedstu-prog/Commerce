@@ -754,6 +754,18 @@ def api_client_report_sales_csv():
         return jsonify({"error": str(e)}), 500
 
 # ---------------------------------------------------------------------------
+# Current-user info endpoint (used by frontend to detect role)
+# ---------------------------------------------------------------------------
+
+@app.route("/api/me")
+def api_me():
+    """GET /api/me – returns the current user's role and auth status."""
+    user = _get_current_user()
+    if user:
+        return jsonify({"authenticated": True, "role": user["role"]})
+    return jsonify({"authenticated": False, "role": None})
+
+# ---------------------------------------------------------------------------
 # Legacy / public analytics APIs (kept for backward compat with index.html)
 # ---------------------------------------------------------------------------
 
