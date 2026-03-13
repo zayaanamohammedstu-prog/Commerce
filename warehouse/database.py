@@ -24,14 +24,49 @@ def init_db(db_path: str = DB_PATH) -> None:
     conn = get_connection(db_path)
     conn.executescript(schema)
     conn.commit()
+    _migrate(conn)
     conn.close()
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Apply safe ALTER TABLE migrations for existing databases."""
+    # Extend forecast_runs with new columns (guarded – no-op if they exist)
+    existing = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(forecast_runs)").fetchall()
+    }
+    new_cols = {
+        "weights_json": "TEXT",
+        "error_msg": "TEXT",
+        "data_quality_score": "REAL",
+    }
+    for col, col_type in new_cols.items():
+        if col not in existing:
+            conn.execute(
+                f"ALTER TABLE forecast_runs ADD COLUMN {col} {col_type}"
+            )
+    # Create forecast_events if it somehow doesn't exist yet
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS forecast_events (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            date        TEXT NOT NULL,
+            type        TEXT NOT NULL,
+            severity    REAL,
+            description TEXT,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )"""
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_fe_date ON forecast_events(date)"
+    )
+    conn.commit()
 
 
 def drop_all(db_path: str = DB_PATH) -> None:
     """Drop all warehouse tables (used in tests / full reloads)."""
     tables = [
-        "forecast_values", "forecast_runs", "upload_log",
-        "fact_sales", "dim_date", "dim_customers", "dim_products",
+        "forecast_values", "forecast_runs", "forecast_events",
+        "upload_log", "fact_sales", "dim_date", "dim_customers", "dim_products",
     ]
     conn = get_connection(db_path)
     for table in tables:

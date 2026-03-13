@@ -75,7 +75,7 @@ CREATE INDEX IF NOT EXISTS idx_date_year_month  ON dim_date(year, month);
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS forecast_runs (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    algorithm    TEXT NOT NULL,       -- e.g. "Prophet", "Holt-Winters", "Moving Average"
+    algorithm    TEXT NOT NULL,       -- e.g. "Ensemble", "Prophet", "Holt-Winters", "Moving Average"
     horizon      INTEGER NOT NULL,    -- number of days forecast
     mae          REAL,
     rmse         REAL,
@@ -83,6 +83,9 @@ CREATE TABLE IF NOT EXISTS forecast_runs (
     training_start TEXT,
     training_end   TEXT,
     training_days  INTEGER,
+    weights_json TEXT,                -- JSON: component model weights
+    error_msg    TEXT,                -- surface any non-fatal errors
+    data_quality_score REAL,         -- 0-100 data quality at time of run
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -117,3 +120,17 @@ CREATE TABLE IF NOT EXISTS upload_log (
     error_msg    TEXT,
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ------------------------------------------------------------
+-- Forecast events (anomaly / holiday / disruption memory)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS forecast_events (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    date        TEXT NOT NULL,        -- ISO date YYYY-MM-DD
+    type        TEXT NOT NULL,        -- "anomaly" | "holiday" | "promotion" | "disruption"
+    severity    REAL,                 -- 0.0–1.0
+    description TEXT,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_fe_date ON forecast_events(date);

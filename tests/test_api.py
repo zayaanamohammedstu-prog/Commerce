@@ -629,9 +629,12 @@ def test_client_forecast_persists(client):
     forecast_res = client.get("/api/client/forecast?horizon=7")
     assert forecast_res.status_code == 200
     data = forecast_res.get_json()
-    assert len(data) == 7
-    assert "date" in data[0]
-    assert "forecast" in data[0]
+    # New response is a dict with 'forecast' key containing a list
+    forecast_list = data.get("forecast", data) if isinstance(data, dict) else data
+    assert len(forecast_list) == 7
+    first = forecast_list[0]
+    assert "date" in first
+    assert "yhat" in first or "forecast" in first
 
     # Verify persistence in the client warehouse DB
     conn = get_platform_connection(flask_app.config["PLATFORM_DATABASE"])

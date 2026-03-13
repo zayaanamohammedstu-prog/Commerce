@@ -20,7 +20,7 @@
     .topbar h1{font-size:1.5rem;font-weight:700;color:#fff}
     .horizon-row{display:flex;gap:.5rem;align-items:center}
     .horizon-row label{font-size:.85rem;color:#8a9bb5;margin-right:.25rem}
-    .horizon-btn{padding:.35rem .9rem;border-radius:6px;border:1px solid rgba(0,212,170,.2);background:transparent;color:#8a9bb5;font-size:.85rem;cursor:pointer}
+    .horizon-btn{padding:.35rem .9rem;border-radius:6px;border:1px solid rgba(0,212,170,.2);background:transparent;color:#8a9bb5;font-size:.85rem;cursor:pointer;transition:all .15s}
     .horizon-btn.active{background:rgba(0,212,170,.15);color:#00d4aa;border-color:#00d4aa}
     .card{background:#0d1626;border:1px solid rgba(0,212,170,.14);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem}
     .card h3{font-size:1rem;font-weight:600;color:#fff;margin-bottom:1rem}
@@ -32,6 +32,31 @@
     .summary-item{background:rgba(0,212,170,.05);border:1px solid rgba(0,212,170,.1);border-radius:8px;padding:.75rem 1rem}
     .summary-item .key{font-size:.78rem;color:#8a9bb5;margin-bottom:.25rem}
     .summary-item .val{font-size:.9rem;color:#dde4f0;font-weight:500}
+    /* Anomaly banner */
+    .anomaly-banner{background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.3);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;display:none}
+    .anomaly-banner h4{color:#fb7185;margin-bottom:.5rem;font-size:.95rem}
+    .anomaly-item{font-size:.85rem;color:#dde4f0;padding:.3rem 0;border-bottom:1px solid rgba(255,255,255,.05)}
+    .anomaly-item:last-child{border-bottom:none}
+    /* Insights panel */
+    .insight-item{background:rgba(0,212,170,.05);border-left:3px solid #00d4aa;border-radius:0 8px 8px 0;padding:.75rem 1rem;margin-bottom:.6rem;font-size:.88rem;color:#dde4f0;line-height:1.5}
+    .insight-item.anomaly{border-left-color:#fb7185;background:rgba(251,113,133,.06)}
+    .insight-item.data_quality{border-left-color:#fbbf24;background:rgba(251,191,36,.06)}
+    .insight-badge{display:inline-block;font-size:.72rem;padding:.15rem .5rem;border-radius:20px;margin-right:.4rem;font-weight:600;text-transform:uppercase}
+    .badge-high{background:rgba(34,197,94,.15);color:#22c55e}
+    .badge-medium{background:rgba(251,191,36,.15);color:#fbbf24}
+    .badge-low{background:rgba(251,113,133,.15);color:#fb7185}
+    /* What-if playground */
+    .whatif-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;margin-bottom:1rem}
+    .slider-group label{font-size:.82rem;color:#8a9bb5;display:flex;justify-content:space-between;margin-bottom:.35rem}
+    .slider-group input[type=range]{width:100%;accent-color:#00d4aa;cursor:pointer}
+    .btn{padding:.5rem 1.2rem;border-radius:8px;border:none;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .15s}
+    .btn-primary{background:#00d4aa;color:#060a12}
+    .btn-primary:hover{background:#00bfa0}
+    .btn-secondary{background:rgba(255,255,255,.07);color:#dde4f0;border:1px solid rgba(255,255,255,.12)}
+    .weights-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:.5rem}
+    .weights-bar-seg{transition:width .4s}
+    .dq-score{font-size:1.2rem;font-weight:700}
+    .dq-good{color:#22c55e}.dq-medium{color:#fbbf24}.dq-bad{color:#fb7185}
   </style>
 </head>
 <body>
@@ -51,27 +76,77 @@
 
   <div class="main">
     <div class="topbar">
-      <h1>Sales Forecast</h1>
+      <h1>Sales Forecast &amp; Intelligence</h1>
       <div class="horizon-row">
         <label>Horizon:</label>
-        <button class="horizon-btn" onclick="loadForecast(14,this)">14 days</button>
-        <button class="horizon-btn active" onclick="loadForecast(30,this)">30 days</button>
-        <button class="horizon-btn" onclick="loadForecast(60,this)">60 days</button>
-        <button class="horizon-btn" onclick="loadForecast(90,this)">90 days</button>
+        <button class="horizon-btn" onclick="loadForecast(14,this)">14d</button>
+        <button class="horizon-btn active" onclick="loadForecast(30,this)">30d</button>
+        <button class="horizon-btn" onclick="loadForecast(60,this)">60d</button>
+        <button class="horizon-btn" onclick="loadForecast(90,this)">90d</button>
       </div>
     </div>
 
+    <!-- Anomaly Alert Banner -->
+    <div class="anomaly-banner" id="anomalyBanner">
+      <h4>⚠️ Anomalies Detected</h4>
+      <div id="anomalyList"></div>
+    </div>
+
+    <!-- Accuracy Metrics -->
     <div class="metrics-grid">
       <div class="metric-card"><div class="label">MAE</div><div class="value" id="mae">—</div></div>
       <div class="metric-card"><div class="label">RMSE</div><div class="value" id="rmse">—</div></div>
       <div class="metric-card"><div class="label">MAPE</div><div class="value" id="mape">—</div></div>
+      <div class="metric-card"><div class="label">Data Quality</div><div class="value dq-score" id="dqScore">—</div></div>
     </div>
 
+    <!-- Model Weights -->
+    <div class="card" id="weightsCard" style="display:none">
+      <h3>Ensemble Weights</h3>
+      <div id="weightsContent" style="font-size:.85rem;color:#8a9bb5"></div>
+      <div class="weights-bar" id="weightsBar"></div>
+    </div>
+
+    <!-- Forecast Chart -->
     <div class="card">
-      <h3>Revenue Forecast</h3>
+      <h3>Revenue Forecast <span style="font-size:.8rem;color:#8a9bb5;font-weight:400" id="algorithmLabel"></span></h3>
       <canvas id="forecast-chart" height="80"></canvas>
     </div>
 
+    <!-- Insights Panel -->
+    <div class="card">
+      <h3>💡 Auto-Generated Insights</h3>
+      <div id="insightsPanel"><div style="color:#8a9bb5;font-size:.9rem">Loading insights…</div></div>
+    </div>
+
+    <!-- What-if Playground -->
+    <div class="card">
+      <h3>🎮 What-If Playground</h3>
+      <div class="whatif-grid">
+        <div class="slider-group">
+          <label>Price Change <span id="priceVal">0%</span></label>
+          <input type="range" id="priceSlider" min="-30" max="30" value="0" step="1"
+                 oninput="document.getElementById('priceVal').textContent=this.value+'%'"/>
+        </div>
+        <div class="slider-group">
+          <label>Demand Shock <span id="demandVal">0%</span></label>
+          <input type="range" id="demandSlider" min="-50" max="50" value="0" step="1"
+                 oninput="document.getElementById('demandVal').textContent=this.value+'%'"/>
+        </div>
+        <div class="slider-group">
+          <label>Promo Boost <span id="promoVal">0%</span></label>
+          <input type="range" id="promoSlider" min="0" max="50" value="0" step="1"
+                 oninput="document.getElementById('promoVal').textContent=this.value+'%'"/>
+        </div>
+      </div>
+      <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="runWhatIf()">▶ Run Scenario</button>
+        <button class="btn btn-secondary" onclick="clearWhatIf()">✕ Clear Scenario</button>
+        <span id="whatifStatus" style="font-size:.85rem;color:#8a9bb5"></span>
+      </div>
+    </div>
+
+    <!-- Model Summary -->
     <div class="card" id="summary-card">
       <h3>Model Summary</h3>
       <div class="summary-list" id="summary-list"><div style="color:#8a9bb5;font-size:.9rem">Loading…</div></div>
@@ -80,44 +155,204 @@
 
   <script>
     let forecastChart = null;
+    let currentForecastData = [];
+    let currentHorizon = 30;
+    const PALETTE = ['#00d4aa','#ff6b35','#9b8ffc','#fbbf24'];
 
     function loadForecast(horizon, btn) {
+      currentHorizon = horizon;
       document.querySelectorAll('.horizon-btn').forEach(b=>b.classList.remove('active'));
       if(btn) btn.classList.add('active');
 
-      fetch('/api/client/forecast?horizon='+horizon).then(r=>r.json()).then(data=>{
-        const labels = data.map(d=>d.date||d.ds||'');
-        const yhat = data.map(d=>d.yhat||d.forecast||d.value||0);
-        const upper = data.map(d=>d.yhat_upper||d.upper||null);
-        const lower = data.map(d=>d.yhat_lower||d.lower||null);
-        if(forecastChart) forecastChart.destroy();
-        const datasets = [{
-          label:'Forecast',data:yhat,borderColor:'#00d4aa',backgroundColor:'rgba(0,212,170,.12)',tension:.35,fill:false,pointRadius:2
-        }];
-        if(upper[0]!=null) datasets.push({label:'Upper',data:upper,borderColor:'rgba(0,212,170,.3)',borderDash:[4,3],fill:false,pointRadius:0});
-        if(lower[0]!=null) datasets.push({label:'Lower',data:lower,borderColor:'rgba(0,212,170,.3)',borderDash:[4,3],fill:false,pointRadius:0});
-        forecastChart = new Chart(document.getElementById('forecast-chart'),{
-          type:'line',
-          data:{labels,datasets},
-          options:{responsive:true,plugins:{legend:{labels:{color:'#8a9bb5'}}},scales:{x:{ticks:{color:'#8a9bb5',maxTicksLimit:12},grid:{color:'rgba(255,255,255,.06)'}},y:{ticks:{color:'#8a9bb5'},grid:{color:'rgba(255,255,255,.06)'}}}}
-        });
-      }).catch(()=>{});
+      fetch('/api/client/forecast?horizon='+horizon)
+        .then(r=>r.json())
+        .then(data=>{
+          const forecast = data.forecast || data;
+          currentForecastData = forecast;
+          const alg = data.algorithm || 'Ensemble';
+          document.getElementById('algorithmLabel').textContent = '· '+alg;
+
+          // Accuracy from response
+          if(data.mae!=null)  document.getElementById('mae').textContent  = Number(data.mae).toFixed(2);
+          if(data.rmse!=null) document.getElementById('rmse').textContent = Number(data.rmse).toFixed(2);
+          if(data.mape!=null) document.getElementById('mape').textContent = Number(data.mape).toFixed(2)+'%';
+
+          // Ensemble weights bar
+          const weights = data.weights || {};
+          const wKeys = Object.keys(weights).filter(k=>weights[k]>0);
+          if(wKeys.length > 0){
+            const wCard = document.getElementById('weightsCard');
+            wCard.style.display = '';
+            document.getElementById('weightsContent').innerHTML =
+              wKeys.map((k,i)=>
+                `<span style="color:${PALETTE[i%PALETTE.length]};margin-right:1rem">
+                  ${k.replace(/_/g,' ')}: <b>${(weights[k]*100).toFixed(0)}%</b>
+                </span>`
+              ).join('');
+            document.getElementById('weightsBar').innerHTML =
+              wKeys.map((k,i)=>
+                `<div class="weights-bar-seg"
+                  style="width:${(weights[k]*100).toFixed(1)}%;background:${PALETTE[i%PALETTE.length]}">
+                </div>`
+              ).join('');
+          }
+
+          renderForecastChart(forecast);
+        })
+        .catch(()=>{});
     }
 
-    // Accuracy metrics
-    fetch('/api/client/forecast/accuracy').then(r=>r.json()).then(d=>{
-      document.getElementById('mae').textContent = d.mae!=null ? d.mae.toFixed(2) : 'N/A';
-      document.getElementById('rmse').textContent = d.rmse!=null ? d.rmse.toFixed(2) : 'N/A';
-      document.getElementById('mape').textContent = d.mape!=null ? d.mape.toFixed(2)+'%' : 'N/A';
+    function renderForecastChart(forecast, whatifCorr) {
+      const labels = forecast.map(d=>d.date||d.ds||'');
+      const yhat   = forecast.map(d=>d.yhat||d.forecast||0);
+      const upper  = forecast.map(d=>d.yhat_upper||d.upper||null);
+      const lower  = forecast.map(d=>d.yhat_lower||d.lower||null);
+
+      if(forecastChart) forecastChart.destroy();
+
+      const datasets = [];
+      // Confidence band (fill between upper and lower)
+      if(upper[0]!=null){
+        datasets.push({
+          label:'Upper bound',data:upper,
+          borderColor:'rgba(0,212,170,.25)',borderDash:[4,3],
+          backgroundColor:'rgba(0,212,170,.08)',fill:'+1',pointRadius:0,tension:.35
+        });
+      }
+      datasets.push({
+        label:'Forecast',data:yhat,
+        borderColor:'#00d4aa',backgroundColor:'rgba(0,212,170,.12)',
+        tension:.35,fill:false,pointRadius:2,borderWidth:2
+      });
+      if(lower[0]!=null){
+        datasets.push({
+          label:'Lower bound',data:lower,
+          borderColor:'rgba(0,212,170,.25)',borderDash:[4,3],
+          backgroundColor:'rgba(0,212,170,.08)',fill:'-1',pointRadius:0,tension:.35
+        });
+      }
+
+      if(whatifCorr){
+        datasets.push({label:'Scenario p90',data:whatifCorr.map(d=>d.p90),borderColor:'#fbbf24',borderDash:[3,2],fill:false,pointRadius:0,tension:.35});
+        datasets.push({label:'Scenario median',data:whatifCorr.map(d=>d.p50),borderColor:'#ff6b35',fill:false,pointRadius:0,tension:.35,borderWidth:2});
+        datasets.push({label:'Scenario p10',data:whatifCorr.map(d=>d.p10),borderColor:'#fbbf24',borderDash:[3,2],fill:false,pointRadius:0,tension:.35});
+      }
+
+      forecastChart = new Chart(document.getElementById('forecast-chart'),{
+        type:'line',
+        data:{labels,datasets},
+        options:{
+          responsive:true,
+          interaction:{mode:'index',intersect:false},
+          plugins:{
+            legend:{labels:{color:'#8a9bb5',boxWidth:14,font:{size:11}}},
+            tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: $${Number(ctx.raw).toLocaleString('en',{maximumFractionDigits:2})}`}}
+          },
+          scales:{
+            x:{ticks:{color:'#8a9bb5',maxTicksLimit:12},grid:{color:'rgba(255,255,255,.04)'}},
+            y:{ticks:{color:'#8a9bb5',callback:v=>'$'+Number(v).toLocaleString()},grid:{color:'rgba(255,255,255,.04)'}}
+          }
+        }
+      });
+    }
+
+    // What-if simulation
+    function runWhatIf() {
+      const price  = parseFloat(document.getElementById('priceSlider').value);
+      const demand = parseFloat(document.getElementById('demandSlider').value);
+      const promo  = parseFloat(document.getElementById('promoSlider').value);
+      document.getElementById('whatifStatus').textContent = 'Running simulation…';
+      fetch('/api/client/forecast/whatif',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          horizon: currentHorizon,
+          scenario:{price_change_pct:price, demand_shock_pct:demand, promo_boost_pct:promo}
+        })
+      }).then(r=>r.json()).then(data=>{
+        document.getElementById('whatifStatus').textContent =
+          `Scenario: price ${price>0?'+':''}${price}%, demand ${demand>0?'+':''}${demand}%, promo +${promo}%`;
+        renderForecastChart(currentForecastData, data.corridor||[]);
+      }).catch(()=>{ document.getElementById('whatifStatus').textContent='Simulation failed.'; });
+    }
+
+    function clearWhatIf() {
+      ['priceSlider','demandSlider','promoSlider'].forEach(id=>{
+        document.getElementById(id).value = 0;
+      });
+      ['priceVal','demandVal','promoVal'].forEach(id=>{
+        document.getElementById(id).textContent = '0%';
+      });
+      document.getElementById('whatifStatus').textContent = '';
+      renderForecastChart(currentForecastData);
+    }
+
+    // Anomalies
+    fetch('/api/client/forecast/anomalies').then(r=>r.json()).then(data=>{
+      const list = data.anomalies || [];
+      if(list.length > 0){
+        const banner = document.getElementById('anomalyBanner');
+        banner.style.display = '';
+        const container = document.getElementById('anomalyList');
+        container.innerHTML = '';
+        list.slice(0,5).forEach(a=>{
+          const div = document.createElement('div');
+          div.className = 'anomaly-item';
+          div.textContent = `📅 ${a.date} — ${a.description}`;
+          container.appendChild(div);
+        });
+      }
     }).catch(()=>{});
+
+    // Insights
+    fetch('/api/client/insights').then(r=>r.json()).then(data=>{
+      const dq = data.data_quality_score;
+      if(dq!=null){
+        const el = document.getElementById('dqScore');
+        el.textContent = Math.round(dq)+'/100';
+        el.className = 'value dq-score ' + (dq>=70?'dq-good':dq>=40?'dq-medium':'dq-bad');
+      }
+      const panel = document.getElementById('insightsPanel');
+      const items = data.insights || [];
+      if(items.length===0){
+        panel.textContent = 'No insights available yet — upload data to get started.';
+        panel.style.color = '#8a9bb5';
+        panel.style.fontSize = '.9rem';
+        return;
+      }
+      panel.innerHTML = '';
+      items.forEach(ins=>{
+        const badgeClass = ins.confidence==='high'?'badge-high':ins.confidence==='medium'?'badge-medium':'badge-low';
+        const cardClass  = ['anomaly','data_quality'].includes(ins.type)?ins.type:'';
+        const div = document.createElement('div');
+        div.className = `insight-item ${cardClass}`;
+        const badge = document.createElement('span');
+        badge.className = `insight-badge ${badgeClass}`;
+        badge.textContent = ins.confidence;
+        div.appendChild(badge);
+        div.appendChild(document.createTextNode(' ' + ins.message));
+        panel.appendChild(div);
+      });
+    }).catch(()=>{
+      const panel = document.getElementById('insightsPanel');
+      panel.textContent = 'Insights unavailable.';
+      panel.style.color = '#8a9bb5';
+      panel.style.fontSize = '.9rem';
+    });
 
     // Model summary
     fetch('/api/client/forecast/summary').then(r=>r.json()).then(d=>{
       const list = document.getElementById('summary-list');
-      const items = Object.entries(d).map(([k,v])=>`<div class="summary-item"><div class="key">${k}</div><div class="val">${v}</div></div>`).join('');
+      const items = Object.entries(d).map(([k,v])=>
+        `<div class="summary-item"><div class="key">${k.replace(/_/g,' ')}</div><div class="val">${v}</div></div>`
+      ).join('');
       list.innerHTML = items || '<div style="color:#8a9bb5;font-size:.9rem">No summary available.</div>';
-    }).catch(()=>{ document.getElementById('summary-list').innerHTML='<div style="color:#8a9bb5;font-size:.9rem">Not available.</div>'; });
+    }).catch(()=>{
+      document.getElementById('summary-list').innerHTML =
+        '<div style="color:#8a9bb5;font-size:.9rem">Not available.</div>';
+    });
 
+    // Initial load
     loadForecast(30, null);
   </script>
 </body>
