@@ -128,7 +128,10 @@
         .then(({ ok, data }) => {
           if (ok) {
             let html = '✅ Upload successful!';
-            if (data.rows_loaded != null) html += '<br>Rows loaded: <strong>' + data.rows_loaded + '</strong>';
+            if (data.rows_loaded != null) {
+              const r = data.rows_loaded;
+              html += `<br>Rows loaded: <strong>Sales ${r.sales ?? 0}, Products ${r.products ?? 0}, Customers ${r.customers ?? 0}, Dates ${r.dates ?? 0}</strong>`;
+            }
             if (data.message) html += '<br>' + data.message;
             showStatus('success', html);
             uploadBtn.disabled = false;

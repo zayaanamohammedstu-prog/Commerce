@@ -3,6 +3,9 @@ Chart.defaults.color = '#4e5b70';
 Chart.defaults.borderColor = 'rgba(255,255,255,.055)';
 Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
 
+/* ── API prefix: '' for admin/public, '/client' for client users ── */
+let CLIENT_PREFIX = '';
+
 const C = {
   primary:   '#00d4aa',
   secondary: '#ff6b35',
@@ -145,7 +148,7 @@ function destroyChart(ch) { if (ch) ch.destroy(); }
 /* ── KPIs ─────────────────────────────────────────────────── */
 async function loadKPIs() {
   try {
-    const d = await fetch('/api/kpis').then(r => r.json());
+    const d = await fetch(`/api${CLIENT_PREFIX}/kpis`).then(r => r.json());
     document.getElementById('kpiRevenue').textContent   = fmtCurrency(d.total_revenue);
     document.getElementById('kpiOrders').textContent    = fmtNumber(d.total_orders);
     document.getElementById('kpiUnits').textContent     = fmtNumber(d.total_units_sold);
@@ -160,7 +163,7 @@ let currentGran = 'monthly';
 
 async function loadSalesChart() {
   try {
-    const data    = await fetch(`/api/sales/timeseries?granularity=${currentGran}`).then(r => r.json());
+    const data    = await fetch(`/api${CLIENT_PREFIX}/sales/timeseries?granularity=${currentGran}`).then(r => r.json());
     const labels  = data.map(d => d.period);
     const revenue = data.map(d => d.revenue);
     const units   = data.map(d => d.units);
@@ -225,7 +228,7 @@ document.getElementById('granGroup').addEventListener('click', e => {
 /* ── Top Products ────────────────────────────────────────── */
 async function loadTopProducts() {
   try {
-    const data = await fetch('/api/products/top?limit=10').then(r => r.json());
+    const data = await fetch(`/api${CLIENT_PREFIX}/products/top?limit=10`).then(r => r.json());
     destroyChart(topProductsChart);
     topProductsChart = new Chart(document.getElementById('topProductsChart'), {
       type: 'bar',
@@ -256,7 +259,7 @@ async function loadTopProducts() {
 /* ── Category Doughnut ───────────────────────────────────── */
 async function loadCategoryChart() {
   try {
-    const data = await fetch('/api/sales/category').then(r => r.json());
+    const data = await fetch(`/api${CLIENT_PREFIX}/sales/category`).then(r => r.json());
     destroyChart(categoryChart);
     categoryChart = new Chart(document.getElementById('categoryChart'), {
       type: 'doughnut',
@@ -284,7 +287,7 @@ async function loadCategoryChart() {
 /* ── Region Charts ───────────────────────────────────────── */
 async function loadRegionCharts() {
   try {
-    const data   = await fetch('/api/sales/region').then(r => r.json());
+    const data   = await fetch(`/api${CLIENT_PREFIX}/sales/region`).then(r => r.json());
     const labels = data.map(d => d.region);
 
     destroyChart(regionChart);
@@ -340,8 +343,8 @@ let currentHorizon = '30';
 async function loadForecast() {
   try {
     const [forecastData, summary] = await Promise.all([
-      fetch(`/api/forecast?horizon=${currentHorizon}`).then(r => r.json()),
-      fetch('/api/forecast/summary').then(r => r.json()),
+      fetch(`/api${CLIENT_PREFIX}/forecast?horizon=${currentHorizon}`).then(r => r.json()),
+      fetch(`/api${CLIENT_PREFIX}/forecast/summary`).then(r => r.json()),
     ]);
 
     const ribbon = document.getElementById('forecastMeta');
@@ -431,7 +434,18 @@ function loadAll() {
   loadForecast();
 }
 
-loadAll();
+/* ── Initialise: detect user role then load data ─────────── */
+async function initDashboard() {
+  try {
+    const me = await fetch('/api/me').then(r => r.json());
+    if (me.role === 'client') CLIENT_PREFIX = '/client';
+  } catch (e) {
+    console.warn('Could not determine user role from /api/me:', e);
+  }
+  loadAll();
+}
+
+initDashboard();
 
 /* ── Admin helpers ───────────────────────────────────────── */
 const STATUS_MSG_DURATION_MS = 6000;

@@ -704,3 +704,57 @@ def test_api_upload_requires_auth(client):
         content_type="multipart/form-data",
     )
     assert res.status_code in (401, 302)
+
+
+# ── /api/me ───────────────────────────────────────────────────────────────────
+
+def test_api_me_unauthenticated(client):
+    """/api/me returns unauthenticated when no session exists."""
+    with client.session_transaction() as sess:
+        sess.clear()
+    res = client.get("/api/me")
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data["authenticated"] is False
+    assert data["role"] is None
+
+
+def test_api_me_admin(client):
+    """/api/me returns role=admin when an admin is logged in."""
+    _login_as_admin(client)
+    me = client.get("/api/me").get_json()
+    assert me["authenticated"] is True
+    assert me["role"] == "admin"
+
+    with client.session_transaction() as sess:
+        sess.clear()
+
+
+def test_api_me_client(client):
+    """/api/me returns role=client when a client is logged in."""
+    # Create an approved client via admin
+    _login_as_admin(client)
+    res = client.post(
+        "/api/admin/users/create",
+        json={
+            "email": "me_test_client@example.com",
+            "password": "Test1234!",
+            "role": "client",
+            "business_name": "Me Test Co",
+        },
+    )
+    assert res.status_code == 201
+    user_id = res.get_json()["user_id"]
+
+    # Switch to client session
+    with client.session_transaction() as sess:
+        sess.clear()
+        sess["user_id"] = user_id
+        sess["role"] = "client"
+
+    me = client.get("/api/me").get_json()
+    assert me["authenticated"] is True
+    assert me["role"] == "client"
+
+    with client.session_transaction() as sess:
+        sess.clear()
