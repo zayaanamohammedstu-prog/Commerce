@@ -185,3 +185,60 @@ def get_model_summary(db_path: str = DB_PATH) -> Dict:
         "mean_daily_revenue": round(float(series.mean()), 2),
         "std_daily_revenue": round(float(series.std()), 2),
     }
+
+
+def persist_forecast(db_path: str, run_meta: Dict, forecast_rows: List[Dict]) -> int:
+    """
+    Store a forecast run and its values in the warehouse.
+    Returns the new run_id.
+    """
+    from warehouse.database import get_connection
+    conn = get_connection(db_path)
+    cur = conn.execute(
+        """INSERT INTO forecast_runs
+               (algorithm, horizon, mae, rmse, mape, training_start, training_end, training_days)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            run_meta.get("algorithm"),
+            run_meta.get("horizon"),
+            run_meta.get("mae"),
+            run_meta.get("rmse"),
+            run_meta.get("mape"),
+            run_meta.get("training_start"),
+            run_meta.get("training_end"),
+            run_meta.get("training_days"),
+        ),
+    )
+    run_id = cur.lastrowid
+    conn.executemany(
+        "INSERT INTO forecast_values (run_id, ds, yhat, yhat_lower, yhat_upper) VALUES (?, ?, ?, ?, ?)",
+        [
+            (run_id, row["date"], row["forecast"], row.get("lower"), row.get("upper"))
+            for row in forecast_rows
+        ],
+    )
+    conn.commit()
+    conn.close()
+    return run_id
+
+
+def get_latest_forecast_run(db_path: str) -> Dict:
+    """Return the most recent forecast_run row with its values."""
+    from warehouse.database import get_connection
+    conn = get_connection(db_path)
+    run = conn.execute(
+        "SELECT * FROM forecast_runs ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    if not run:
+        conn.close()
+        return {}
+    run_dict = dict(run)
+    values = [
+        dict(r) for r in conn.execute(
+            "SELECT ds, yhat, yhat_lower, yhat_upper FROM forecast_values WHERE run_id = ? ORDER BY ds",
+            (run_dict["id"],),
+        ).fetchall()
+    ]
+    conn.close()
+    run_dict["values"] = values
+    return run_dict

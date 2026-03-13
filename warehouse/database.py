@@ -29,7 +29,10 @@ def init_db(db_path: str = DB_PATH) -> None:
 
 def drop_all(db_path: str = DB_PATH) -> None:
     """Drop all warehouse tables (used in tests / full reloads)."""
-    tables = ["fact_sales", "dim_date", "dim_customers", "dim_products"]
+    tables = [
+        "forecast_values", "forecast_runs", "upload_log",
+        "fact_sales", "dim_date", "dim_customers", "dim_products",
+    ]
     conn = get_connection(db_path)
     for table in tables:
         conn.execute(f"DROP TABLE IF EXISTS {table}")

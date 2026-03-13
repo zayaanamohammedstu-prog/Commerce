@@ -68,3 +68,52 @@ CREATE INDEX IF NOT EXISTS idx_sales_product    ON fact_sales(product_id);
 CREATE INDEX IF NOT EXISTS idx_sales_customer   ON fact_sales(customer_id);
 CREATE INDEX IF NOT EXISTS idx_sales_region     ON fact_sales(region);
 CREATE INDEX IF NOT EXISTS idx_date_year_month  ON dim_date(year, month);
+
+-- ------------------------------------------------------------
+-- Forecast runs metadata
+-- One row per forecast run (model, parameters, accuracy).
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS forecast_runs (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    algorithm    TEXT NOT NULL,       -- e.g. "Prophet", "Holt-Winters", "Moving Average"
+    horizon      INTEGER NOT NULL,    -- number of days forecast
+    mae          REAL,
+    rmse         REAL,
+    mape         REAL,
+    training_start TEXT,
+    training_end   TEXT,
+    training_days  INTEGER,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ------------------------------------------------------------
+-- Forecast values
+-- One row per forecasted date per run.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS forecast_values (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id   INTEGER NOT NULL REFERENCES forecast_runs(id),
+    ds       TEXT NOT NULL,   -- ISO date YYYY-MM-DD
+    yhat     REAL NOT NULL,
+    yhat_lower REAL,
+    yhat_upper REAL
+);
+
+CREATE INDEX IF NOT EXISTS idx_fv_run_id ON forecast_values(run_id);
+CREATE INDEX IF NOT EXISTS idx_fv_ds     ON forecast_values(ds);
+
+-- ------------------------------------------------------------
+-- Upload log
+-- Records every file upload and ETL run for audit purposes.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS upload_log (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER,      -- references app_users.id (platform DB)
+    filename     TEXT NOT NULL,
+    file_size    INTEGER,
+    rows_accepted INTEGER,
+    rows_rejected INTEGER,
+    status       TEXT NOT NULL DEFAULT 'pending',  -- pending / success / error
+    error_msg    TEXT,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
